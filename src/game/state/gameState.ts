@@ -1,67 +1,124 @@
 import type { GameEvent } from '../systems/events';
+import type { BuildingId } from '../world/cityLayout';
 
-/**
- * Central, normalized game state.
- *
- * Nothing in here knows about Azure DevOps, React or Phaser. Real ADO data
- * will later be translated into the same `GameEvent`s the demo controls emit.
- */
-
+export type PipelineStage = 'build' | 'test' | 'security' | 'package' | 'deploy';
+export type StageStatus = 'pending' | 'running' | 'success' | 'failed';
 export type PipelineStatus = 'idle' | 'running' | 'success' | 'failed';
 
-export interface Pipeline {
+export const STAGES: readonly PipelineStage[] = ['build', 'test', 'security', 'package', 'deploy'];
+
+export const STAGE_BUILDING: Record<PipelineStage, BuildingId> = {
+  build: 'build-factory',
+  test: 'test-lab',
+  security: 'security-hub',
+  package: 'packaging-station',
+  deploy: 'deployment-port',
+};
+
+export interface PipelineState {
   id: string;
   name: string;
   status: PipelineStatus;
-  /** Human readable stage, e.g. "Build" / "Waiting". */
-  stage: string;
+  currentStage: PipelineStage | null;
+  stages: Record<PipelineStage, StageStatus>;
+  /** Demo only: presenter arms a stage to fail. */
+  failAt: PipelineStage | null;
 }
 
 export interface GameState {
   cityHealth: number;
-  pipelines: Pipeline[];
+  pipeline: PipelineState;
+  followCamera: boolean;
 }
 
-export const DEFAULT_CITY_HEALTH = 85;
-export const HEALTH_ON_SUCCESS = 5;
-export const HEALTH_ON_FAILURE = -15;
+const INITIAL_CITY_HEALTH = 85;
 
-/** The pipeline the Build Factory visualises in Milestone 1. */
-export const PRIMARY_PIPELINE_ID = 'backend';
-
-export function createInitialState(): GameState {
+function createPendingStages(): Record<PipelineStage, StageStatus> {
   return {
-    cityHealth: DEFAULT_CITY_HEALTH,
-    pipelines: [
-      { id: PRIMARY_PIPELINE_ID, name: 'Backend Pipeline', status: 'idle', stage: 'Waiting' },
-    ],
+    build: 'pending',
+    test: 'pending',
+    security: 'pending',
+    package: 'pending',
+    deploy: 'pending',
   };
 }
 
-export function getPipeline(state: GameState, id: string = PRIMARY_PIPELINE_ID): Pipeline {
-  const pipeline = state.pipelines.find((p) => p.id === id);
-  if (!pipeline) throw new Error(`Unknown pipeline: ${id}`);
-  return pipeline;
+export function createInitialState(): GameState {
+  return {
+    cityHealth: INITIAL_CITY_HEALTH,
+    pipeline: {
+      id: 'backend',
+      name: 'Backend Pipeline',
+      status: 'idle',
+      currentStage: null,
+      stages: createPendingStages(),
+      failAt: null,
+    },
+    followCamera: true,
+  };
 }
 
 /**
- * Pure reducer: game event + state -> next state.
- * Health is clamped to 0-100.
+ * Pure reducer for the local pipeline demo. Health never leaves the 0..100 range.
  */
 export function reduce(state: GameState, event: GameEvent): GameState {
-  const patch = (id: string, next: Partial<Pipeline>, healthDelta = 0): GameState => ({
-    cityHealth: Math.min(100, Math.max(0, state.cityHealth + healthDelta)),
-    pipelines: state.pipelines.map((p) => (p.id === id ? { ...p, ...next } : p)),
-  });
-
   switch (event.type) {
     case 'PIPELINE_STARTED':
-      return patch(event.pipelineId, { status: 'running', stage: 'Build' });
-    case 'PIPELINE_SUCCEEDED':
-      return patch(event.pipelineId, { status: 'success', stage: 'Completed' }, HEALTH_ON_SUCCESS);
-    case 'PIPELINE_FAILED':
-      return patch(event.pipelineId, { status: 'failed', stage: 'Build (failed)' }, HEALTH_ON_FAILURE);
-    case 'RESET_DEMO':
-      return createInitialState();
+      return {
+        ...state,
+        pipeline: {
+          ...state.pipeline,
+          status: 'running',
+          currentStage: null,
+          stages: createPendingStages(),
+        },
+      };
+    case 'PIPELINE_STAGE_STARTED':
+      return {
+        ...state,
+        pipeline: {
+          ...state.pipeline,
+          currentStage: event.stage,
+          stages: { ...state.pipeline.stages, [event.stage]: 'running' },
+        },
+      };
+    case 'PIPELINE_STAGE_SUCCEEDED':
+      return {
+        ...state,
+        cityHealth: Math.min(100, Math.max(0, state.cityHealth + (event.stage === 'deploy' ? 5 : 1))),
+        pipeline: {
+          ...state.pipeline,
+          stages: { ...state.pipeline.stages, [event.stage]: 'success' },
+        },
+      };
+    case 'PIPELINE_STAGE_FAILED':
+      return {
+        ...state,
+        cityHealth: Math.min(100, Math.max(0, state.cityHealth - (event.stage === 'deploy' ? 15 : 10))),
+        pipeline: {
+          ...state.pipeline,
+          status: 'failed',
+          currentStage: null,
+          stages: { ...state.pipeline.stages, [event.stage]: 'failed' },
+        },
+      };
+    case 'PIPELINE_COMPLETED':
+      return {
+        ...state,
+        pipeline: { ...state.pipeline, status: 'success' },
+      };
+    case 'PIPELINE_RESET':
+      return { ...createInitialState(), followCamera: state.followCamera };
+    case 'SET_FAIL_STAGE':
+      return {
+        ...state,
+        pipeline: { ...state.pipeline, failAt: event.stage },
+      };
+    case 'SET_FOLLOW_CAMERA':
+      return { ...state, followCamera: event.follow };
+    default: {
+      const unhandledEvent: never = event;
+      throw new Error(`Unhandled game event: ${unhandledEvent}`);
+    }
   }
 }

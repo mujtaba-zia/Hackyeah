@@ -1,13 +1,14 @@
-/**
- * The generic event vocabulary of the game world.
- *
- * Demo controls emit these today; an Azure DevOps adapter will emit the exact
- * same events later. Entities must never care about the source.
- */
+import type { PipelineStage } from '../state/gameState';
+
+/** Events that coordinate the locally simulated pipeline journey. */
 export type GameEvent =
-  | { type: 'PIPELINE_STARTED'; pipelineId: string }
-  | { type: 'PIPELINE_SUCCEEDED'; pipelineId: string }
-  | { type: 'PIPELINE_FAILED'; pipelineId: string }
-  | { type: 'RESET_DEMO' };
+  | { type: 'PIPELINE_STARTED' }
+  | { type: 'PIPELINE_STAGE_STARTED'; stage: PipelineStage }
+  | { type: 'PIPELINE_STAGE_SUCCEEDED'; stage: PipelineStage }
+  | { type: 'PIPELINE_STAGE_FAILED'; stage: PipelineStage }
+  | { type: 'PIPELINE_COMPLETED' }
+  | { type: 'PIPELINE_RESET' }
+  | { type: 'SET_FAIL_STAGE'; stage: PipelineStage | null }
+  | { type: 'SET_FOLLOW_CAMERA'; follow: boolean };
 
 export type GameEventType = GameEvent['type'];

@@ -2,11 +2,8 @@ import Phaser from 'phaser';
 import { TILE_H, TILE_W } from './iso';
 
 /**
- * All art is generated at runtime as simple flat-shaded isometric blocks.
- * Placeholder-quality by intent (Milestone 1): readable > beautiful.
- *
- * Every generated texture registers its origin here so sprites can be anchored
- * on the centre of their ground tile.
+ * All art is generated at runtime as flat-shaded isometric forms so the city
+ * stays self-contained and its objects keep a consistent ground anchor.
  */
 export const TEXTURE_ORIGIN: Record<string, { x: number; y: number }> = {};
 
@@ -31,7 +28,7 @@ function block(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, 
   g.fillPoints(pts([cx, y], [x + w, y + hh / 2], [cx, y + hh], [x, y + hh / 2]), true);
 }
 
-/** Window dots on both visible side faces of a block. */
+/** Window dots give large facades readable scale without separate assets. */
 function windows(
   g: Phaser.GameObjects.Graphics,
   x: number,
@@ -48,20 +45,27 @@ function windows(
     const wy = y + hh + 14 + r * 18;
     for (let c = 0; c < 2; c++) {
       const fx = 0.3 + c * 0.36;
-      // left face slopes down towards the left, right face towards the right
       g.fillRect(x + fx * (w / 2) - 4, wy - fx * (hh / 2) + hh / 2 - 4, 8, 9);
       g.fillRect(cx + fx * (w / 2) - 4, wy - (1 - fx) * (hh / 2) - 4, 8, 9);
     }
   }
 }
 
-function bake(scene: Phaser.Scene, key: string, w: number, h: number, originY: number, draw: (g: Phaser.GameObjects.Graphics) => void) {
+function bake(
+  scene: Phaser.Scene,
+  key: string,
+  w: number,
+  h: number,
+  originY: number,
+  draw: (g: Phaser.GameObjects.Graphics) => void,
+) {
+  TEXTURE_ORIGIN[key] = { x: 0.5, y: originY };
   if (scene.textures.exists(key)) return;
+
   const g = scene.add.graphics();
   draw(g);
   g.generateTexture(key, w, h);
   g.destroy();
-  TEXTURE_ORIGIN[key] = { x: 0.5, y: originY };
 }
 
 /** Diamond ground tile. */
@@ -75,10 +79,7 @@ function tile(scene: Phaser.Scene, key: string, fill: number, edge: number, deta
   });
 }
 
-/**
- * A building whose footprint is `w` wide and body `h` tall, plus optional roof
- * decoration drawn in the same local coordinate space.
- */
+/** A building whose ground contact remains centred despite roof details. */
 function building(
   scene: Phaser.Scene,
   key: string,
@@ -90,7 +91,6 @@ function building(
 ) {
   const hh = w / 2;
   const canvasH = hh + h + headroom;
-  // Ground contact point sits a quarter of the tile width above the bottom edge.
   bake(scene, key, w, canvasH, 1 - w / 4 / canvasH, (g) => {
     block(g, 0, headroom, w, h, faces);
     extras?.(g, 0, headroom);
@@ -104,36 +104,37 @@ export function createTextures(scene: Phaser.Scene): void {
     g.fillEllipse(22, 16, 10, 5);
     g.fillEllipse(42, 20, 8, 4);
   });
-  tile(scene, 't-grass2', 0x76c04a, 0x6cb544);
-  tile(scene, 't-road', 0x9aa3ad, 0x8a929b, (g) => {
+  tile(scene, 't-grass2', 0x76c04a, 0x6cb544, (g) => {
+    g.fillStyle(0x96d968, 0.45);
+    g.fillEllipse(18, 18, 12, 4);
+  });
+  tile(scene, 't-road', 0x89929c, 0x707983, (g) => {
     g.fillStyle(0xe8edf2, 0.85);
     g.fillEllipse(TILE_W / 2, TILE_H / 2, 12, 4);
+  });
+  tile(scene, 't-sidewalk', 0xd8d3c8, 0xbeb8ac, (g) => {
+    g.lineStyle(1, 0xbeb8ac, 0.7);
+    g.lineBetween(14, 16, 50, 16);
   });
   tile(scene, 't-plaza', 0xe3d9c0, 0xcdc2a6, (g) => {
     g.lineStyle(1, 0xcdc2a6, 0.8);
     g.lineBetween(TILE_W / 2, 0, TILE_W / 2, TILE_H);
+    g.lineBetween(0, TILE_H / 2, TILE_W, TILE_H / 2);
   });
   tile(scene, 't-water', 0x4aa3d8, 0x3d8dbd, (g) => {
     g.lineStyle(2, 0x87ccef, 0.8);
     g.lineBetween(14, 16, 26, 22);
     g.lineBetween(36, 12, 50, 18);
   });
-
-  // ---- decorative props ---------------------------------------------------
-  building(scene, 'p-house-a', 56, 34, { top: 0xf2b4a0, left: 0xc9dbe8, right: 0xe6f0f7 }, (g, x, y) => {
-    windows(g, x, y, 56, 34, 1);
+  tile(scene, 't-dock', 0xb7895c, 0x8e6848, (g) => {
+    g.lineStyle(2, 0x7a563b, 0.75);
+    g.lineBetween(12, 12, 52, 20);
+    g.lineBetween(12, 20, 52, 28);
   });
-  building(scene, 'p-house-b', 56, 46, { top: 0x8fc7f0, left: 0xdcd2c2, right: 0xf3ecdf }, (g, x, y) => {
-    windows(g, x, y, 56, 46, 2);
-  });
-  bake(scene, 'p-tree', 44, 62, 0.88, (g) => {
-    g.fillStyle(0x8a5a3b);
-    g.fillRect(20, 38, 6, 20);
-    g.fillStyle(0x3f9e4d);
-    g.fillCircle(22, 28, 15);
-    g.fillStyle(0x4fba5c);
-    g.fillCircle(17, 22, 11);
-    g.fillCircle(28, 24, 9);
+  tile(scene, 't-asphalt', 0x68727c, 0x565f68, (g) => {
+    g.fillStyle(0x9aa3ad, 0.5);
+    g.fillEllipse(26, 16, 6, 3);
+    g.fillEllipse(42, 20, 5, 2);
   });
 
   // ---- landmarks ----------------------------------------------------------
@@ -145,7 +146,6 @@ export function createTextures(scene: Phaser.Scene): void {
     { top: 0xf0a13a, left: 0xb8642a, right: 0xe0813a },
     (g, x, y) => {
       windows(g, x, y, 104, 64, 2, 0xfff0c0);
-      // chimneys on the roof
       g.fillStyle(0xd8d2c6);
       g.fillRect(x + 32, y - 26, 14, 34);
       g.fillRect(x + 56, y - 18, 12, 28);
@@ -172,21 +172,49 @@ export function createTextures(scene: Phaser.Scene): void {
   );
   building(
     scene,
-    'b-reviewhall',
-    92,
-    52,
-    { top: 0xf3ead3, left: 0xbfb49a, right: 0xdfd5bd },
+    'b-security',
+    98,
+    62,
+    { top: 0x284d82, left: 0x162d5c, right: 0x1f4072 },
     (g, x, y) => {
-      // portico columns across the front faces
-      g.fillStyle(0xfffaf0);
-      for (let i = 0; i < 4; i++) {
-        g.fillRect(x + 12 + i * 10, y + 30 + i * 5, 7, 26);
-        g.fillRect(x + 50 + i * 10, y + 45 - i * 5, 7, 26);
-      }
-      g.fillStyle(0xa6c8e8);
-      g.fillPoints(pts([x + 46, y - 18], [x + 92, y + 5], [x + 46, y + 28], [x, y + 5]), true);
+      windows(g, x, y, 98, 62, 2, 0x8edfff);
+      // A cyan scanner arch marks the secure entry at the front facade.
+      g.fillStyle(0x58e3ff);
+      g.fillRect(x + 30, y + 31, 5, 22);
+      g.fillRect(x + 63, y + 31, 5, 22);
+      g.fillEllipse(x + 49, y + 31, 43, 18);
+      g.fillStyle(0x284d82);
+      g.fillEllipse(x + 49, y + 34, 31, 10);
+      // The roof shield lets the building read clearly at city scale.
+      g.fillStyle(0xaeefff);
+      g.fillPoints(
+        pts([x + 49, y + 8], [x + 61, y + 15], [x + 57, y + 31], [x + 49, y + 38], [x + 41, y + 31], [x + 37, y + 15]),
+        true,
+      );
+      g.fillStyle(0x2f77b5);
+      g.fillPoints(pts([x + 49, y + 14], [x + 55, y + 18], [x + 52, y + 28], [x + 49, y + 31], [x + 46, y + 28], [x + 43, y + 18]), true);
     },
-    20,
+    24,
+  );
+  building(
+    scene,
+    'b-packaging',
+    122,
+    42,
+    { top: 0xd9c3a2, left: 0x8c735d, right: 0xb69b7d },
+    (g, x, y) => {
+      windows(g, x, y, 122, 42, 1, 0xffe4a3);
+      // Conveyor and dark loading bay make the long low station legible.
+      g.fillStyle(0x3c4752);
+      g.fillRect(x + 12, y + 42, 75, 7);
+      g.fillStyle(0xffc23d);
+      for (let i = 0; i < 4; i++) g.fillCircle(x + 20 + i * 18, y + 45, 4);
+      g.fillStyle(0x26313d);
+      g.fillRect(x + 91, y + 44, 22, 20);
+      g.fillStyle(0xf0b25c);
+      g.fillRect(x + 95, y + 46, 14, 4);
+    },
+    18,
   );
   building(
     scene,
@@ -195,13 +223,11 @@ export function createTextures(scene: Phaser.Scene): void {
     40,
     { top: 0xb9c2cc, left: 0x6d7a86, right: 0x94a1ad },
     (g, x, y) => {
-      // crane
       g.fillStyle(0xe4573d);
       g.fillRect(x + 40, y - 34, 8, 46);
       g.fillRect(x + 40, y - 34, 40, 7);
       g.lineStyle(2, 0x3d454d);
       g.lineBetween(x + 76, y - 27, x + 76, y - 6);
-      // containers
       g.fillStyle(0x3fa66b);
       g.fillRect(x + 12, y + 18, 24, 16);
       g.fillStyle(0x3f7fa6);
@@ -209,7 +235,6 @@ export function createTextures(scene: Phaser.Scene): void {
     },
     38,
   );
-  // City Center: plaza block with a fountain on top.
   building(
     scene,
     'b-citycenter',
@@ -225,12 +250,164 @@ export function createTextures(scene: Phaser.Scene): void {
     10,
   );
 
-  // ---- ambient + effects --------------------------------------------------
-  bake(scene, 'a-car', 34, 26, 0.8, (g) => {
-    block(g, 2, 4, 30, 8, { top: 0xef5f5f, left: 0xa83b3b, right: 0xd14f4f });
-    g.fillStyle(0x2e3440, 0.8);
-    g.fillRect(10, 6, 12, 6);
+  // ---- decorative structures ---------------------------------------------
+  building(scene, 'p-house-a', 56, 34, { top: 0xf2b4a0, left: 0xc9dbe8, right: 0xe6f0f7 }, (g, x, y) => {
+    windows(g, x, y, 56, 34, 1);
   });
+  building(scene, 'p-house-b', 56, 46, { top: 0x8fc7f0, left: 0xdcd2c2, right: 0xf3ecdf }, (g, x, y) => {
+    windows(g, x, y, 56, 46, 2);
+  });
+  building(scene, 'p-apartment-a', 68, 72, { top: 0xd7a0ad, left: 0x9b6076, right: 0xbe7f91 }, (g, x, y) => {
+    windows(g, x, y, 68, 72, 3);
+  });
+  building(scene, 'p-apartment-b', 72, 84, { top: 0xc9a96a, left: 0x806843, right: 0xa98c5b }, (g, x, y) => {
+    windows(g, x, y, 72, 84, 4, 0xffe9a6);
+  });
+  building(scene, 'p-office-a', 76, 88, { top: 0xa8d8e6, left: 0x4d7b99, right: 0x6ca8c5 }, (g, x, y) => {
+    windows(g, x, y, 76, 88, 4, 0xd7fbff);
+  });
+  building(scene, 'p-office-b', 82, 104, { top: 0xb5c5d9, left: 0x596b82, right: 0x7894ae }, (g, x, y) => {
+    windows(g, x, y, 82, 104, 5, 0xe8f6ff);
+    g.fillStyle(0x44566f);
+    g.fillRect(x + 37, y - 14, 8, 18);
+  }, 16);
+  building(scene, 'p-shop', 54, 38, { top: 0xf2cc75, left: 0xa87342, right: 0xd99c55 }, (g, x, y) => {
+    g.fillStyle(0xfff3cf);
+    g.fillRect(x + 13, y + 31, 28, 8);
+  });
+  building(scene, 'p-cafe', 52, 36, { top: 0xe4775d, left: 0x9c4c40, right: 0xc96050 }, (g, x, y) => {
+    g.fillStyle(0xffe5a6);
+    g.fillRect(x + 14, y + 28, 25, 7);
+    g.fillStyle(0x5d4037);
+    g.fillRect(x + 24, y + 35, 5, 12);
+  });
+  building(scene, 'p-techoffice', 78, 94, { top: 0x75c8d8, left: 0x2e6d8e, right: 0x4b9fba }, (g, x, y) => {
+    windows(g, x, y, 78, 94, 4, 0xbdf7ff);
+    g.fillStyle(0x5df0d6);
+    g.fillRect(x + 34, y - 12, 10, 16);
+  }, 14);
+  building(scene, 'p-warehouse', 82, 46, { top: 0xb0aca3, left: 0x6f716e, right: 0x92918b }, (g, x, y) => {
+    g.fillStyle(0x39424c);
+    g.fillRect(x + 29, y + 42, 25, 18);
+    g.fillStyle(0xd8d2c6);
+    g.fillRect(x + 34, y + 45, 15, 3);
+  });
+  building(scene, 'p-factory', 76, 52, { top: 0xd88a55, left: 0x984f37, right: 0xbd6844 }, (g, x, y) => {
+    windows(g, x, y, 76, 52, 2, 0xffdf9f);
+    g.fillStyle(0xddd3c6);
+    g.fillRect(x + 45, y - 20, 10, 28);
+    g.fillStyle(0xb63d3d);
+    g.fillRect(x + 45, y - 20, 10, 5);
+  }, 24);
+  building(scene, 'p-server', 60, 70, { top: 0x566a91, left: 0x293954, right: 0x3c5278 }, (g, x, y) => {
+    windows(g, x, y, 60, 70, 3, 0x65e8ff);
+    g.fillStyle(0x65e8ff);
+    g.fillRect(x + 27, y + 30, 6, 6);
+    g.fillRect(x + 27, y + 48, 6, 6);
+  });
+
+  // ---- small props --------------------------------------------------------
+  bake(scene, 'p-tree', 44, 62, 0.88, (g) => {
+    g.fillStyle(0x8a5a3b);
+    g.fillRect(20, 38, 6, 20);
+    g.fillStyle(0x3f9e4d);
+    g.fillCircle(22, 28, 15);
+    g.fillStyle(0x4fba5c);
+    g.fillCircle(17, 22, 11);
+    g.fillCircle(28, 24, 9);
+  });
+  bake(scene, 'p-bench', 44, 28, 0.88, (g) => {
+    g.fillStyle(0x71462b);
+    g.fillRect(7, 14, 30, 6);
+    g.fillRect(10, 20, 4, 6);
+    g.fillRect(30, 20, 4, 6);
+    g.fillStyle(0xb57943);
+    g.fillRect(7, 9, 30, 4);
+  });
+  bake(scene, 'p-lamp', 20, 54, 0.92, (g) => {
+    g.fillStyle(0x38404a);
+    g.fillRect(8, 14, 4, 36);
+    g.fillStyle(0xffe5a6);
+    g.fillCircle(10, 11, 8);
+    g.fillStyle(0x59636f);
+    g.fillRect(5, 6, 10, 4);
+  });
+  bake(scene, 'p-container', 46, 40, 0.82, (g) => {
+    block(g, 3, 5, 40, 14, { top: 0x4a8cc2, left: 0x27618e, right: 0x367baa });
+    g.fillStyle(0xd9e8f5, 0.8);
+    g.fillRect(13, 24, 17, 3);
+  });
+  bake(scene, 'p-crane', 76, 102, 0.86, (g) => {
+    g.fillStyle(0xe8ad3d);
+    g.fillRect(34, 30, 8, 62);
+    g.fillRect(34, 30, 36, 7);
+    g.fillStyle(0x35414c);
+    g.fillRect(66, 37, 2, 34);
+    g.fillRect(61, 68, 12, 4);
+    g.fillStyle(0xbe7d2b);
+    g.fillRect(27, 90, 22, 6);
+  });
+  bake(scene, 'p-fountain', 58, 42, 0.82, (g) => {
+    g.fillStyle(0xb9c7cb);
+    g.fillEllipse(29, 28, 52, 20);
+    g.fillStyle(0x4aa3d8);
+    g.fillEllipse(29, 26, 42, 14);
+    g.fillStyle(0xe5f7ff);
+    g.fillRect(26, 8, 6, 19);
+    g.fillEllipse(29, 8, 20, 8);
+  });
+
+  // ---- vehicles -----------------------------------------------------------
+  bake(scene, 'a-car', 38, 32, 0.82, (g) => {
+    block(g, 2, 7, 34, 8, { top: 0xef5f5f, left: 0xa83b3b, right: 0xd14f4f });
+    g.fillStyle(0x2e3440, 0.85);
+    g.fillRect(21, 10, 8, 6);
+  });
+  bake(scene, 'a-car2', 38, 32, 0.82, (g) => {
+    block(g, 2, 7, 34, 8, { top: 0x4db5b0, left: 0x287671, right: 0x35948e });
+    g.fillStyle(0xd8fbff, 0.85);
+    g.fillRect(21, 10, 8, 6);
+  });
+  bake(scene, 'a-van', 44, 36, 0.82, (g) => {
+    block(g, 2, 7, 40, 13, { top: 0x88c85c, left: 0x4f8740, right: 0x69aa4b });
+    g.fillStyle(0xd8f5ff, 0.85);
+    g.fillRect(26, 11, 10, 7);
+  });
+  bake(scene, 'a-truck', 52, 40, 0.82, (g) => {
+    block(g, 2, 11, 48, 12, { top: 0xd9a441, left: 0x9a6b2e, right: 0xc38835 });
+    g.fillStyle(0x4d5b69);
+    g.fillRect(7, 20, 19, 7);
+    g.fillStyle(0xd8f5ff);
+    g.fillRect(29, 14, 10, 7);
+  });
+  bake(scene, 'a-bus', 62, 42, 0.82, (g) => {
+    block(g, 2, 10, 58, 14, { top: 0x8f6bc2, left: 0x5b418d, right: 0x7857aa });
+    g.fillStyle(0xdff7ff);
+    for (let i = 0; i < 4; i++) g.fillRect(17 + i * 9, 15, 6, 6);
+    g.fillStyle(0x9deaff);
+    g.fillRect(49, 14, 7, 8);
+  });
+  bake(scene, 'a-firetruck', 56, 42, 0.82, (g) => {
+    block(g, 2, 10, 52, 13, { top: 0xe04f49, left: 0x9f302f, right: 0xc63d39 });
+    g.fillStyle(0xf8f8f2);
+    g.fillRect(8, 18, 22, 4);
+    g.fillRect(35, 14, 11, 7);
+    g.fillStyle(0xc9d5df);
+    g.fillRect(18, 5, 28, 3);
+  });
+  bake(scene, 'a-pipeline-truck', 62, 46, 0.82, (g) => {
+    block(g, 2, 13, 58, 13, { top: 0xffc23d, left: 0xb97118, right: 0xe89422 });
+    g.fillStyle(0x273747);
+    g.fillRect(7, 22, 30, 6);
+    g.fillStyle(0xbdf7ff);
+    g.fillRect(42, 16, 11, 7);
+    // The bright artifact crate makes this truck distinct from ambient traffic.
+    block(g, 19, 4, 22, 8, { top: 0x62e8d1, left: 0x218f8d, right: 0x3fbbb3 });
+    g.fillStyle(0xffffff);
+    g.fillRect(27, 11, 7, 3);
+  });
+
+  // ---- actors -------------------------------------------------------------
   bake(scene, 'a-worker', 20, 34, 0.9, (g) => {
     g.fillStyle(0x3b6ea8);
     g.fillRect(6, 16, 9, 14);
@@ -239,6 +416,35 @@ export function createTextures(scene: Phaser.Scene): void {
     g.fillStyle(0xffc23d);
     g.fillEllipse(10, 7, 16, 9);
   });
+  bake(scene, 'a-ped-a', 18, 32, 0.9, (g) => {
+    g.fillStyle(0xf0c7a2);
+    g.fillCircle(9, 9, 5);
+    g.fillStyle(0x4d94d6);
+    g.fillRect(5, 15, 8, 12);
+    g.fillStyle(0x35414c);
+    g.fillRect(5, 27, 3, 4);
+    g.fillRect(10, 27, 3, 4);
+  });
+  bake(scene, 'a-ped-b', 18, 32, 0.9, (g) => {
+    g.fillStyle(0x8f5b42);
+    g.fillCircle(9, 9, 5);
+    g.fillStyle(0xe4775d);
+    g.fillRect(5, 15, 8, 12);
+    g.fillStyle(0x35414c);
+    g.fillRect(5, 27, 3, 4);
+    g.fillRect(10, 27, 3, 4);
+  });
+  bake(scene, 'a-ped-c', 18, 32, 0.9, (g) => {
+    g.fillStyle(0xd29b73);
+    g.fillCircle(9, 9, 5);
+    g.fillStyle(0x8f70c8);
+    g.fillRect(5, 15, 8, 12);
+    g.fillStyle(0x35414c);
+    g.fillRect(5, 27, 3, 4);
+    g.fillRect(10, 27, 3, 4);
+  });
+
+  // ---- stage effects ------------------------------------------------------
   bake(scene, 'fx-gear', 40, 40, 0.5, (g) => {
     g.fillStyle(0xffd166);
     for (let i = 0; i < 8; i++) {
@@ -283,8 +489,31 @@ export function createTextures(scene: Phaser.Scene): void {
     g.fillCircle(94, 34, 18);
     g.fillRect(30, 32, 70, 20);
   });
-  bake(scene, 'fx-ring', 8, 8, 0.5, (g) => {
+  bake(scene, 'fx-shield', 46, 50, 0.5, (g) => {
+    g.fillStyle(0x4c9cff, 0.95);
+    g.fillPoints(pts([23, 3], [42, 11], [38, 34], [23, 46], [8, 34], [4, 11]), true);
+    g.lineStyle(3, 0xd9fbff);
+    g.beginPath();
+    g.moveTo(14, 25);
+    g.lineTo(21, 32);
+    g.lineTo(33, 17);
+    g.strokePath();
+  });
+  bake(scene, 'fx-scan', 52, 52, 0.5, (g) => {
+    g.fillStyle(0x4ce7ff, 0.24);
+    g.fillCircle(26, 26, 23);
+    g.lineStyle(2, 0x75efff, 0.95);
+    g.strokePoints(pts([26, 4], [48, 26], [26, 48], [4, 26]), true);
+    g.lineBetween(8, 26, 44, 26);
+    g.lineBetween(26, 8, 26, 44);
     g.fillStyle(0xffffff);
-    g.fillRect(0, 0, 8, 8);
+    g.fillCircle(26, 26, 3);
+  });
+  bake(scene, 'fx-crate', 32, 32, 0.82, (g) => {
+    block(g, 2, 5, 28, 10, { top: 0x62e8d1, left: 0x218f8d, right: 0x3fbbb3 });
+    g.fillStyle(0xffffff);
+    g.fillRect(12, 17, 8, 3);
+    g.fillStyle(0xffd166);
+    g.fillRect(14, 8, 4, 10);
   });
 }

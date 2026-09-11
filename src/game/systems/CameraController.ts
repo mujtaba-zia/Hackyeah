@@ -1,11 +1,17 @@
 import Phaser from 'phaser';
 
-const MIN_ZOOM = 0.45;
+const MIN_ZOOM = 0.28;
 const MAX_ZOOM = 2.2;
-const KEY_PAN_SPEED = 520; // world px per second at zoom 1
+const KEY_PAN_SPEED = 720; // world px per second at zoom 1
 
-/** Desktop camera: left-drag pan, wheel zoom, WASD/arrows, reset. */
+/** Desktop camera: left-drag pan, wheel zoom, WASD/arrows, reset, demo follow. */
 export class CameraController {
+  /** Set once the user moves the camera themselves; suppresses auto re-framing. */
+  userMoved = false;
+  /** Squared pointer travel since press; lets the scene ignore clicks after a drag. */
+  dragDistance = 0;
+
+  private readonly scene: Phaser.Scene;
   private readonly camera: Phaser.Cameras.Scene2D.Camera;
   private readonly keys: Record<'up' | 'down' | 'left' | 'right', Phaser.Input.Keyboard.Key[]>;
   private readonly home: { x: number; y: number; zoom: number };
@@ -13,10 +19,7 @@ export class CameraController {
   private dragging = false;
   private dragOrigin = new Phaser.Math.Vector2();
   private cameraOrigin = new Phaser.Math.Vector2();
-  /** Squared pointer travel since press; lets the scene ignore clicks after a drag. */
-  dragDistance = 0;
-
-  private readonly scene: Phaser.Scene;
+  private following = false;
 
   constructor(scene: Phaser.Scene, home: { x: number; y: number; zoom: number }) {
     this.scene = scene;
@@ -41,6 +44,11 @@ export class CameraController {
     this.reset(false);
   }
 
+  /** Limits scrolling to the authored world plus a margin of sky. */
+  setWorldBounds(bounds: Phaser.Geom.Rectangle): void {
+    this.camera.setBounds(bounds.x, bounds.y, bounds.width, bounds.height);
+  }
+
   private onPointerDown = (pointer: Phaser.Input.Pointer) => {
     if (!pointer.leftButtonDown()) return;
     this.dragging = true;
@@ -49,15 +57,15 @@ export class CameraController {
     this.cameraOrigin.set(this.camera.scrollX, this.camera.scrollY);
   };
 
-  /** Set once the user moves the camera themselves; suppresses auto re-framing. */
-  userMoved = false;
-
   private onPointerMove = (pointer: Phaser.Input.Pointer) => {
     if (!this.dragging) return;
     const dx = pointer.x - this.dragOrigin.x;
     const dy = pointer.y - this.dragOrigin.y;
     this.dragDistance = Math.max(this.dragDistance, dx * dx + dy * dy);
-    if (this.wasDragged) this.userMoved = true;
+    if (!this.wasDragged) return;
+    // Taking manual control always wins over a scripted camera move.
+    this.userMoved = true;
+    this.stopFollow();
     this.camera.setScroll(
       this.cameraOrigin.x - dx / this.camera.zoom,
       this.cameraOrigin.y - dy / this.camera.zoom,
@@ -69,14 +77,45 @@ export class CameraController {
   };
 
   private onWheel = (_p: unknown, _o: unknown, _dx: number, dy: number) => {
-    const zoom = Phaser.Math.Clamp(this.camera.zoom * (dy > 0 ? 0.88 : 1.12), MIN_ZOOM, MAX_ZOOM);
-    this.camera.setZoom(zoom);
+    this.camera.setZoom(
+      Phaser.Math.Clamp(this.camera.zoom * (dy > 0 ? 0.88 : 1.12), MIN_ZOOM, MAX_ZOOM),
+    );
     this.userMoved = true;
   };
 
   /** True while the user is dragging, or has dragged more than a few pixels. */
   get wasDragged(): boolean {
     return this.dragDistance > 36;
+  }
+
+  /** Smoothly centres on a world point, used when a pipeline stage begins. */
+  focusOn(x: number, y: number, zoom = 1.05): void {
+    this.stopFollow();
+    const view = { x: this.camera.midPoint.x, y: this.camera.midPoint.y, zoom: this.camera.zoom };
+    this.scene.tweens.add({
+      targets: view,
+      x,
+      y,
+      zoom,
+      duration: 650,
+      ease: 'Cubic.out',
+      onUpdate: () => {
+        this.camera.setZoom(view.zoom);
+        this.camera.centerOn(view.x, view.y);
+      },
+    });
+  }
+
+  /** Rides along with the pipeline truck while it crosses the city. */
+  follow(target: Phaser.GameObjects.Image): void {
+    this.following = true;
+    this.camera.startFollow(target, false, 0.08, 0.08);
+  }
+
+  stopFollow(): void {
+    if (!this.following) return;
+    this.following = false;
+    this.camera.stopFollow();
   }
 
   update(_time: number, delta: number): void {
@@ -90,12 +129,14 @@ export class CameraController {
     if (isDown(this.keys.down)) dy += step;
     if (dx === 0 && dy === 0) return;
     this.userMoved = true;
+    this.stopFollow();
     this.camera.setScroll(this.camera.scrollX + dx, this.camera.scrollY + dy);
   }
 
   reset(animated = true): void {
     this.userMoved = false;
     this.dragDistance = 0;
+    this.stopFollow();
     if (!animated) {
       this.camera.setZoom(this.home.zoom);
       this.camera.centerOn(this.home.x, this.home.y);

@@ -12,31 +12,67 @@
   color: #16283a;
   font-size: 14px;
   font-weight: 600;
-  transition: transform 120ms ease, filter 120ms ease;
+  transition: transform 120ms ease, filter 120ms ease, opacity 120ms ease;
 }
 
-.demo__btn:hover {
+.demo__btn:not(:disabled):hover {
   filter: brightness(1.06);
   transform: translateY(-1px);
 }
 
-.demo__btn:active {
+.demo__btn:not(:disabled):active {
   transform: translateY(0);
+}
+
+.demo__btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
 }
 
 .demo__btn--run {
   background: #f5a524;
   color: #3a2a00;
 }
-.demo__btn--ok {
-  background: #2fbf6d;
-  color: #04240f;
-}
+
 .demo__btn--fail {
   background: #e4573d;
   color: #2c0800;
 }
+
+.demo__btn--toggle[aria-pressed='true'] {
+  background: #dff5e8;
+  color: #0f5b30;
+}
+
 .demo__btn--ghost {
   background: transparent;
   border: 1px solid #c3d0dd;
+}
+
+.demo__field {
+  display: grid;
+  gap: 4px;
+  color: #5b7189;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.demo__select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #c3d0dd;
+  border-radius: 8px;
+  background: #fff;
+  color: #16283a;
+  font: inherit;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.demo__btn:focus-visible,
+.demo__select:focus-visible {
+  outline: 2px solid #2f7dc1;
+  outline-offset: 2px;
 }

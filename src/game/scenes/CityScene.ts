@@ -1,12 +1,25 @@
 import Phaser from 'phaser';
-import { Building } from '../entities/Building';
-import { BuildFactory } from '../entities/BuildFactory';
+import { PipelineArtifact } from '../entities/PipelineArtifact';
+import { PipelineTruck } from '../entities/PipelineTruck';
+import { StageBuilding, type StageVisuals } from '../entities/StageBuilding';
 import { gameStore } from '../state/gameStore';
-import { getPipeline, PRIMARY_PIPELINE_ID } from '../state/gameState';
+import { STAGES, STAGE_BUILDING, type PipelineStage } from '../state/gameState';
 import { CameraController } from '../systems/CameraController';
 import { createAmbientLife } from '../systems/AmbientLife';
-import { CITY_CENTER, KEY_BUILDINGS, PROPS, TERRAIN, type BuildingId } from '../world/cityLayout';
-import { TILE_H, tileToWorld } from '../world/iso';
+import { PedestrianSystem } from '../systems/PedestrianSystem';
+import { PipelineChoreographer } from '../systems/PipelineChoreographer';
+import { TrafficSystem } from '../systems/TrafficSystem';
+import {
+  CITY_CENTER,
+  DISTRICTS,
+  KEY_BUILDINGS,
+  PROPS,
+  TERRAIN,
+  TERRAIN_H,
+  TERRAIN_W,
+  type BuildingId,
+} from '../world/cityLayout';
+import { tileToWorld } from '../world/iso';
 import { createTextures } from '../world/textures';
 
 export interface CitySceneData {
@@ -18,20 +31,35 @@ export interface CitySceneData {
 const TERRAIN_TEXTURE: Record<string, string> = {
   G: 't-grass',
   R: 't-road',
+  S: 't-sidewalk',
   P: 't-plaza',
   W: 't-water',
+  K: 't-dock',
+  A: 't-asphalt',
+};
+
+/** Ground never overlaps, so a single low depth is enough and saves sorting. */
+const GROUND_DEPTH = -1_000_000;
+
+const STAGE_VISUALS: Record<PipelineStage, StageVisuals> = {
+  build: { activity: 'gear', successIcon: 'fx-check', smoke: true },
+  test: { activity: 'scan', successIcon: 'fx-check', smoke: false },
+  security: { activity: 'scan', successIcon: 'fx-shield', smoke: false },
+  package: { activity: 'gear', successIcon: 'fx-check', smoke: true },
+  deploy: { activity: 'gear', successIcon: 'fx-check', smoke: false },
 };
 
 export class CityScene extends Phaser.Scene {
   static readonly KEY = 'CityScene';
 
   private camControl!: CameraController;
-  private buildings = new Map<BuildingId, Building>();
-  private factory!: BuildFactory;
+  private traffic!: TrafficSystem;
+  private pedestrians!: PedestrianSystem;
+  private choreographer!: PipelineChoreographer;
+  private readonly buildings = new Map<BuildingId, StageBuilding>();
   private selectedId: BuildingId | null = null;
   private onSelectionChange!: (id: BuildingId | null) => void;
   private onReady!: (scene: CityScene) => void;
-  private unsubscribe?: () => void;
 
   constructor() {
     super(CityScene.KEY);
@@ -47,17 +75,23 @@ export class CityScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#8ecae6');
 
     this.createTerrain();
-    for (const prop of PROPS) {
-      const { x, y } = tileToWorld(prop.tile);
-      this.add.image(x, y, prop.texture).setOrigin(0.5, 0.86).setDepth(y);
-    }
-    const center = tileToWorld(CITY_CENTER);
-    this.add.image(center.x, center.y, 'b-citycenter').setOrigin(0.5, 0.82).setDepth(center.y);
-
+    this.createProps();
+    this.createDistrictLabels();
     this.createBuildings();
-    createAmbientLife(this);
 
-    this.camControl = new CameraController(this, { x: center.x, y: center.y, zoom: 1.3 });
+    const chimneys = PROPS.filter((p) => p.texture === 'p-factory').map((p) => p.tile).slice(0, 3);
+    createAmbientLife(this, chimneys);
+
+    this.traffic = new TrafficSystem(this);
+    this.pedestrians = new PedestrianSystem(this);
+
+    const truck = new PipelineTruck(this);
+    const emergency = new PipelineTruck(this, 'a-firetruck');
+    const artifact = new PipelineArtifact(this);
+
+    const center = tileToWorld(CITY_CENTER);
+    this.camControl = new CameraController(this, { x: center.x, y: center.y, zoom: 0.62 });
+    this.camControl.setWorldBounds(this.worldBounds());
     // The canvas reaches its final size after boot; re-centre once it settles,
     // but never fight a user who already moved the camera.
     const reframe = () => {
@@ -66,20 +100,49 @@ export class CityScene extends Phaser.Scene {
     this.scale.once(Phaser.Scale.Events.RESIZE, reframe);
     this.time.delayedCall(60, reframe);
 
+    this.choreographer = new PipelineChoreographer(this, {
+      buildings: this.buildings,
+      truck,
+      emergency,
+      artifact,
+      traffic: this.traffic,
+      pedestrians: this.pedestrians,
+      camera: this.camControl,
+    });
+    this.choreographer.attach();
+
     // Clicking empty ground clears the selection.
     this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
       if (this.camControl.wasDragged) return;
-      const hits = this.input.hitTestPointer(pointer);
-      if (hits.length === 0) this.select(null);
+      if (this.input.hitTestPointer(pointer).length === 0) this.select(null);
     });
 
     this.applyState();
-    this.unsubscribe = gameStore.subscribe(() => this.applyState());
+    const unsubscribe = gameStore.subscribe(() => this.applyState());
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.unsubscribe?.();
+      unsubscribe();
+      this.choreographer.destroy();
+      this.traffic.destroy();
+      this.pedestrians.destroy();
       this.camControl.destroy();
     });
+
     this.onReady(this);
+  }
+
+  /** World rectangle covering the whole grid plus sky margin for the clouds. */
+  private worldBounds(): Phaser.Geom.Rectangle {
+    const west = tileToWorld({ tx: 0, ty: TERRAIN_H });
+    const east = tileToWorld({ tx: TERRAIN_W, ty: 0 });
+    const north = tileToWorld({ tx: 0, ty: 0 });
+    const south = tileToWorld({ tx: TERRAIN_W, ty: TERRAIN_H });
+    const margin = 400;
+    return new Phaser.Geom.Rectangle(
+      west.x - margin,
+      north.y - margin,
+      east.x - west.x + margin * 2,
+      south.y - north.y + margin * 2,
+    );
   }
 
   private createTerrain() {
@@ -87,23 +150,50 @@ export class CityScene extends Phaser.Scene {
       [...row].forEach((code, tx) => {
         const { x, y } = tileToWorld({ tx, ty });
         const key = TERRAIN_TEXTURE[code] ?? 't-grass';
-        const texture = key === 't-grass' && (tx + ty) % 3 === 0 ? 't-grass2' : key;
-        this.add.image(x, y, texture).setDepth(y - TILE_H * 4);
+        const texture = key === 't-grass' && (tx * 7 + ty * 3) % 5 === 0 ? 't-grass2' : key;
+        this.add.image(x, y, texture).setDepth(GROUND_DEPTH);
       });
     });
   }
 
+  private createProps() {
+    for (const prop of PROPS) {
+      const { x, y } = tileToWorld(prop.tile);
+      const image = this.add.image(x, y, prop.texture).setDepth(y);
+      if (prop.scale) image.setScale(prop.scale);
+      if (prop.flipX) image.setFlipX(true);
+    }
+  }
+
+  private createDistrictLabels() {
+    for (const district of DISTRICTS) {
+      const { x, y } = tileToWorld(district.tile);
+      this.add
+        .text(x, y, district.name.toUpperCase(), {
+          fontFamily: 'Inter, system-ui, sans-serif',
+          fontSize: '22px',
+          color: '#123047',
+        })
+        .setOrigin(0.5)
+        .setAlpha(0.38)
+        .setDepth(GROUND_DEPTH + 1);
+    }
+  }
+
   private createBuildings() {
+    const stageOf = new Map<BuildingId, PipelineStage>(
+      STAGES.map((stage) => [STAGE_BUILDING[stage], stage]),
+    );
+
     for (const def of KEY_BUILDINGS) {
-      const options = { ...def, interactive: true };
-      const building =
-        def.id === 'build-factory' ? new BuildFactory(this, options) : new Building(this, options);
+      const stage = stageOf.get(def.id);
+      if (!stage) continue;
+      const building = new StageBuilding(this, { ...def, interactive: true }, STAGE_VISUALS[stage]);
       building.sprite.on('pointerup', () => {
         if (this.camControl.wasDragged) return;
         this.select(def.id);
       });
       this.buildings.set(def.id, building);
-      if (building instanceof BuildFactory) this.factory = building;
     }
   }
 
@@ -115,9 +205,12 @@ export class CityScene extends Phaser.Scene {
     this.onSelectionChange(id);
   }
 
-  /** Push normalized game state into the world. The only state->world path. */
+  /** Push normalized game state into the world. The only state to world path. */
   private applyState() {
-    this.factory.setStatus(getPipeline(gameStore.getState(), PRIMARY_PIPELINE_ID).status);
+    const { pipeline } = gameStore.getState();
+    for (const stage of STAGES) {
+      this.buildings.get(STAGE_BUILDING[stage])?.setStageStatus(pipeline.stages[stage]);
+    }
   }
 
   resetCamera() {

@@ -20,9 +20,8 @@ export default function App() {
       <GameCanvas onSelectionChange={setSelected} onSceneReady={handleSceneReady} />
 
       <header className="app__title">
-        Living City <span>· Milestone 1</span>
+        Living City <span>· Milestone 2</span>
       </header>
-
       <div className="app__left">
         <DemoControls onResetCamera={() => sceneRef.current?.resetCamera()} />
       </div>

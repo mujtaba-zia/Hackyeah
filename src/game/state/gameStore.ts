@@ -3,10 +3,10 @@ import type { GameEvent } from '../systems/events';
 import { createInitialState, reduce, type GameState } from './gameState';
 
 /**
- * The single channel between demo controls (later: Azure DevOps) and the world.
+ * The single channel between local controls and the world.
  *
- *   dispatch(event) -> reduce() -> new state -> subscribers (React + Phaser)
- *                   \-> bus.emit(event) -> one-shot reactions (particles, shake)
+ * Dispatch reduces first, subscribers then observe the new state, and bus
+ * handlers receive the same fresh snapshot.
  */
 class GameStore {
   readonly bus = new EventBus();

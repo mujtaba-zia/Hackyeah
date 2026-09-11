@@ -1,59 +1,56 @@
 import Phaser from 'phaser';
-import { CAR_ROUTE, CITY_CENTER } from '../world/cityLayout';
-import { tileToWorld } from '../world/iso';
+import { CITY_CENTER, TERRAIN_H, TERRAIN_W } from '../world/cityLayout';
+import { tileToWorld, type TilePos } from '../world/iso';
 
 /**
- * Three cheap purely-visual effects so the city is not dead:
- * a looping car, drifting clouds, and a fountain splash.
- * No simulation, no pathfinding.
+ * Cheap decoration that is not traffic or pedestrians: clouds, the plaza
+ * fountain and industrial chimney smoke. Tween driven, no update loop.
  */
-export function createAmbientLife(scene: Phaser.Scene): void {
-  // --- car looping around the ring road ---
-  const route = CAR_ROUTE.map((tile) => tileToWorld(tile));
-  const car = scene.add.image(route[0].x, route[0].y, 'a-car').setDepth(route[0].y);
+export function createAmbientLife(scene: Phaser.Scene, chimneys: readonly TilePos[]): void {
+  const west = tileToWorld({ tx: 0, ty: TERRAIN_H });
+  const east = tileToWorld({ tx: TERRAIN_W, ty: 0 });
+  const span = east.x - west.x;
 
-  const driveTo = (index: number) => {
-    const target = route[index];
-    const from = { x: car.x, y: car.y };
-    const distance = Phaser.Math.Distance.Between(from.x, from.y, target.x, target.y);
-    scene.tweens.add({
-      targets: car,
-      x: target.x,
-      y: target.y,
-      duration: (distance / 90) * 1000,
-      onUpdate: () => car.setDepth(car.y),
-      onComplete: () => driveTo((index + 1) % route.length),
-    });
-  };
-  driveTo(1);
-
-  // --- drifting clouds ---
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 5; i++) {
     const cloud = scene.add
-      .image(-400 + i * 420, -260 + i * 120, 'fx-cloud')
-      .setDepth(100000)
-      .setAlpha(0.65)
-      .setScale(0.8 + i * 0.25);
+      .image(west.x + (span / 5) * i, -420 + i * 190, 'fx-cloud')
+      .setDepth(1_000_000)
+      .setAlpha(0.7)
+      .setScale(0.9 + (i % 3) * 0.35);
     scene.tweens.add({
       targets: cloud,
-      x: cloud.x + 1600,
-      duration: 46000 + i * 9000,
+      x: cloud.x + span + 600,
+      duration: 90_000 + i * 12_000,
       repeat: -1,
-      delay: i * 4000,
+      delay: i * 5_000,
     });
   }
 
-  // --- fountain splash at the city centre ---
   const center = tileToWorld(CITY_CENTER);
   scene.add
-    .particles(center.x, center.y - 34, 'fx-spark', {
-      speed: { min: 30, max: 70 },
+    .particles(center.x, center.y - 40, 'fx-spark', {
+      speed: { min: 34, max: 76 },
       angle: { min: 250, max: 290 },
       gravityY: 170,
-      scale: { start: 0.45, end: 0 },
+      scale: { start: 0.5, end: 0 },
       tint: 0x9fdcff,
-      lifespan: 900,
-      frequency: 90,
+      lifespan: 950,
+      frequency: 80,
     })
     .setDepth(center.y + 1);
+
+  // Industrial district keeps working even when no pipeline is running.
+  for (const tile of chimneys) {
+    const { x, y } = tileToWorld(tile);
+    scene.add
+      .particles(x, y - 70, 'fx-smoke', {
+        speedY: { min: -26, max: -12 },
+        speedX: { min: -8, max: 8 },
+        scale: { start: 0.4, end: 1.1 },
+        alpha: { start: 0.45, end: 0 },
+        lifespan: 2600,
+        frequency: 700,
+      })
+      .setDepth(y + 1);
+  }
 }
