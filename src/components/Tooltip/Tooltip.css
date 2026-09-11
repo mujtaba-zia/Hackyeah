@@ -1,0 +1,195 @@
+.tooltip {
+  position: fixed;
+  z-index: 4;
+  width: 280px;
+  max-width: calc(100vw - 20px);
+  max-height: calc(100vh - 20px);
+  overflow-y: auto;
+  padding: 12px;
+  border: 1px solid rgba(171, 193, 211, 0.9);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 10px 25px rgba(14, 35, 56, 0.2);
+  color: #23374b;
+  pointer-events: none;
+}
+
+.tooltip h2 {
+  margin: 0;
+  color: #12202e;
+  font-size: 14px;
+}
+
+.tooltip__intro {
+  margin: 3px 0 8px;
+  color: #5b7189;
+  font-size: 12px;
+}
+
+.tooltip__repository + .tooltip__repository {
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px solid #dde5ed;
+}
+
+.tooltip__repository-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tooltip__repository h3 {
+  min-width: 0;
+  margin: 0;
+  color: #23374b;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.tooltip__health {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tooltip__health--good,
+.tooltip__history-entry--success,
+.tooltip__status--approved {
+  color: #16854a;
+}
+
+.tooltip__health--warn,
+.tooltip__status--waiting,
+.tooltip__status--updating {
+  color: #9a6500;
+}
+
+.tooltip__health--bad,
+.tooltip__history-entry--failed,
+.tooltip__status--changes-requested {
+  color: #c43b25;
+}
+
+.tooltip__subheading {
+  margin-top: 7px;
+  color: #5b7189;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tooltip__empty {
+  margin: 3px 0 0;
+  color: #5b7189;
+  font-size: 11px;
+}
+
+.tooltip__runs,
+.tooltip__history {
+  display: grid;
+  gap: 3px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tooltip__run {
+  padding: 4px 5px;
+  border-radius: 5px;
+  background: #eef4f8;
+}
+
+.tooltip__run-meta,
+.tooltip__history-entry {
+  display: flex;
+  justify-content: space-between;
+  gap: 7px;
+  font-size: 11px;
+}
+
+.tooltip__run-meta span:first-child,
+.tooltip__history-entry span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tooltip__run-meta span:last-child {
+  flex: 0 0 auto;
+  color: #5b7189;
+}
+
+.tooltip__progress {
+  height: 4px;
+  margin-top: 4px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #cfdbe6;
+}
+
+.tooltip__progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: #2f7dc1;
+  transition: width 220ms ease;
+}
+
+.tooltip__history-entry {
+  padding: 3px 0;
+  color: #3d5468;
+}
+
+.tooltip__history-entry strong {
+  flex: 0 0 auto;
+  font-size: 10px;
+}
+
+.tooltip__pr-count {
+  margin: 8px 0 0;
+  color: #5b7189;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.tooltip__pr-title {
+  margin: 0 0 9px;
+  color: #23374b;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.tooltip__facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0;
+}
+
+.tooltip__facts div {
+  min-width: 0;
+}
+
+.tooltip__facts dt {
+  color: #5b7189;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.tooltip__facts dd {
+  margin: 2px 0 0;
+  color: #23374b;
+  font-size: 12px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.tooltip__status--merged {
+  color: #5b7189;
+}

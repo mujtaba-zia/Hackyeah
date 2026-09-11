@@ -1,15 +1,29 @@
+.building.panel {
+  width: 280px;
+  max-width: 280px;
+  max-height: calc(100vh - 96px);
+  overflow-y: auto;
+  padding: 12px;
+}
+
 .building__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
 }
 
 .building__header h2 {
+  min-width: 0;
+  margin-bottom: 8px;
   color: #12202e;
   font-size: 14px;
+  overflow-wrap: anywhere;
 }
 
 .building__close {
+  flex: 0 0 auto;
+  padding: 0 2px;
   border: none;
   background: none;
   color: #5b7189;
@@ -19,26 +33,30 @@
 
 .building__facts {
   display: grid;
-  grid-template-columns: auto;
-  gap: 2px;
-  margin: 0 0 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
 }
 
-.building__facts dt {
-  margin-top: 8px;
+.building__facts div {
+  min-width: 0;
+}
+
+.building__facts dt,
+.building h4 {
   color: #5b7189;
-  font-size: 11px;
+  font-size: 9px;
+  font-weight: 700;
   letter-spacing: 0.07em;
   text-transform: uppercase;
 }
 
 .building__facts dd {
-  display: flex;
-  align-items: center;
-  margin: 0;
+  margin: 2px 0 0;
   color: #23374b;
-  font-size: 15px;
+  font-size: 12px;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .building__district {
@@ -46,18 +64,131 @@
 }
 
 .building__description {
-  margin: 0 0 12px;
+  margin: 10px 0;
   color: #3d5468;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.building__repositories {
+  display: grid;
+  gap: 8px;
+}
+
+.building__repositories > h3 {
+  margin: 0;
+  color: #5b7189;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.building__repository {
+  padding: 8px;
+  border-radius: 8px;
+  background: #eef4f8;
+}
+
+.building__repository-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.building__repository h3 {
+  min-width: 0;
+  margin: 0;
+  color: #23374b;
   font-size: 13px;
-  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.building__health {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.building__health--good,
+.building__history-entry--success {
+  color: #16854a;
+}
+
+.building__health--warn {
+  color: #9a6500;
+}
+
+.building__health--bad,
+.building__history-entry--failed {
+  color: #c43b25;
+}
+
+.building__repository-meta {
+  margin: 2px 0 7px;
+  color: #5b7189;
+  font-size: 11px;
+}
+
+.building h4 {
+  margin: 7px 0 3px;
+}
+
+.building__empty {
+  margin: 0;
+  color: #5b7189;
+  font-size: 11px;
+}
+
+.building__runs,
+.building__history {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.building__runs li,
+.building__history li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: #3d5468;
+  font-size: 11px;
+}
+
+.building__runs li span:first-child,
+.building__history li span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.building__runs li span:last-child,
+.building__history li strong {
+  flex: 0 0 auto;
+}
+
+.building__history li strong {
+  font-size: 10px;
 }
 
 .building__btn {
   width: 100%;
-  padding: 9px;
+  margin-top: 10px;
+  padding: 8px;
   border: 1px solid #c3d0dd;
-  border-radius: 10px;
+  border-radius: 8px;
   background: #fff;
-  font-size: 13px;
+  color: #23374b;
+  font-size: 12px;
   font-weight: 600;
+}
+
+.building__close:focus-visible,
+.building__btn:focus-visible {
+  outline: 2px solid #2f7dc1;
+  outline-offset: 2px;
 }

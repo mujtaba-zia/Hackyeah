@@ -1,13 +1,48 @@
+.hud.panel {
+  width: 280px;
+  max-width: 280px;
+  padding: 11px 12px;
+}
+
+.hud__heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.hud__heading h2 {
+  margin-bottom: 6px;
+}
+
+.hud__value {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.hud__value--good {
+  color: #16854a;
+}
+
+.hud__value--warn {
+  color: #9a6500;
+}
+
+.hud__value--bad {
+  color: #c43b25;
+}
+
 .hud__bar {
-  height: 14px;
+  height: 10px;
+  overflow: hidden;
   border-radius: 999px;
   background: #dde5ed;
-  overflow: hidden;
 }
 
 .hud__fill {
   height: 100%;
-  border-radius: 999px;
+  border-radius: inherit;
   transition: width 400ms ease, background-color 300ms ease;
 }
 
@@ -23,93 +58,9 @@
   background: linear-gradient(90deg, #f2765a, #e4573d);
 }
 
-.hud__value {
-  margin: 6px 0 14px;
-  font-size: 22px;
-  font-weight: 700;
-}
-
-.hud__pipeline {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  margin: 0;
-  color: #23374b;
-  font-size: 14px;
-}
-
-.hud__pipeline-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.hud__pipeline-status {
-  margin-left: auto;
+.hud__summary {
+  margin: 7px 0 0;
   color: #5b7189;
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-
-.hud__stages {
-  display: grid;
-  gap: 3px;
-  margin: 10px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.hud__stage {
-  display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 6px;
-  border-radius: 7px;
-  color: #3d5468;
-  font-size: 13px;
-}
-
-.hud__stage-marker {
-  display: grid;
-  place-items: center;
-  width: 16px;
-  height: 16px;
-  line-height: 1;
-}
-
-.hud__stage-status {
-  color: #5b7189;
-  font-size: 11px;
-}
-
-.hud__stage--pending .hud__stage-marker {
-  color: #9aa8b6;
-}
-
-.hud__stage--running {
-  background: #fff4d7;
-  color: #6a4900;
-  font-weight: 700;
-}
-
-.hud__stage--running .hud__stage-marker {
-  color: #c78300;
-  animation: hud-stage-pulse 1s ease-in-out infinite;
-}
-
-.hud__stage--success .hud__stage-marker {
-  color: #16854a;
-}
-
-.hud__stage--failed .hud__stage-marker {
-  color: #c43b25;
-}
-
-@keyframes hud-stage-pulse {
-  50% {
-    opacity: 0.35;
-  }
+  font-variant-numeric: tabular-nums;
 }

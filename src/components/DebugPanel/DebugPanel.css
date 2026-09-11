@@ -1,0 +1,94 @@
+.debug-panel.panel {
+  display: grid;
+  gap: 8px;
+  width: 280px;
+  max-width: 280px;
+  padding: 12px;
+}
+
+.debug-panel__actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.debug-panel__button,
+.debug-panel__speed {
+  border: none;
+  border-radius: 7px;
+  background: #e8eef5;
+  color: #23374b;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.debug-panel__button {
+  min-height: 31px;
+  padding: 6px 8px;
+}
+
+.debug-panel__button--failure {
+  background: #f7d8d2;
+  color: #8d2a19;
+}
+
+.debug-panel__button--reset {
+  background: #f8edcf;
+  color: #725000;
+}
+
+.debug-panel__speed-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.debug-panel__label {
+  color: #5b7189;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.debug-panel__speeds {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid #c3d0dd;
+  border-radius: 7px;
+}
+
+.debug-panel__speed {
+  min-width: 33px;
+  padding: 5px 7px;
+  border-right: 1px solid #c3d0dd;
+  border-radius: 0;
+  background: #fff;
+}
+
+.debug-panel__speed:last-child {
+  border-right: none;
+}
+
+.debug-panel__speed[aria-pressed='true'],
+.debug-panel__button--follow[aria-pressed='true'] {
+  background: #dff5e8;
+  color: #0f5b30;
+}
+
+.debug-panel__button--ghost {
+  border: 1px solid #c3d0dd;
+  background: #fff;
+}
+
+.debug-panel__button:hover,
+.debug-panel__speed:hover {
+  filter: brightness(0.97);
+}
+
+.debug-panel__button:focus-visible,
+.debug-panel__speed:focus-visible {
+  outline: 2px solid #2f7dc1;
+  outline-offset: 2px;
+}

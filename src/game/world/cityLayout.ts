@@ -6,7 +6,12 @@ export type BuildingId =
   | 'test-lab'
   | 'security-hub'
   | 'packaging-station'
-  | 'deployment-port';
+  | 'deployment-port'
+  | 'frontend-factory'
+  | 'data-factory'
+  | 'infra-factory'
+  | 'review-hall'
+  | 'merge-gate';
 
 /**
  * Hand-authored 44 by 44 city grid. The ring road detours around the south-east
@@ -86,7 +91,7 @@ export interface BuildingDef {
   description: string;
 }
 
-/** Pipeline landmarks stay in delivery order so the journey reads left to right. */
+/** Pipeline landmarks retain their delivery order before organization landmarks extend the city. */
 export const KEY_BUILDINGS: readonly BuildingDef[] = [
   {
     id: 'build-factory',
@@ -128,6 +133,46 @@ export const KEY_BUILDINGS: readonly BuildingDef[] = [
     district: 'logistics',
     description: 'Releases the packaged artifact from the waterfront.',
   },
+  {
+    id: 'frontend-factory',
+    name: 'Frontend Factory',
+    tile: { tx: 7, ty: 4 },
+    texture: 'b-frontend',
+    district: 'industrial',
+    description: 'Builds the customer-facing applications that keep the city connected.',
+  },
+  {
+    id: 'data-factory',
+    name: 'Data Works',
+    tile: { tx: 11, ty: 4 },
+    texture: 'b-data',
+    district: 'industrial',
+    description: 'Refines shared data into dependable services for every district.',
+  },
+  {
+    id: 'infra-factory',
+    name: 'Infrastructure Plant',
+    tile: { tx: 16, ty: 4 },
+    texture: 'b-infra',
+    district: 'industrial',
+    description: 'Keeps the utility systems running for the city and its software.',
+  },
+  {
+    id: 'review-hall',
+    name: 'Review Hall',
+    tile: { tx: 24, ty: 20 },
+    texture: 'b-reviewhall',
+    district: 'center',
+    description: 'Brings developers together to examine changes before they ship.',
+  },
+  {
+    id: 'merge-gate',
+    name: 'Merge Gate',
+    tile: { tx: 28, ty: 20 },
+    texture: 'b-mergegate',
+    district: 'center',
+    description: 'Welcomes approved changes into the shared codebase.',
+  },
 ];
 
 export interface PropDef {
@@ -141,12 +186,9 @@ export interface PropDef {
 export const PROPS: readonly PropDef[] = [
   // Industrial district structures
   { tile: { tx: 5, ty: 5 }, texture: 'p-warehouse', scale: 1.05 },
-  { tile: { tx: 11, ty: 5 }, texture: 'p-factory', scale: 0.9, flipX: true },
   { tile: { tx: 5, ty: 13 }, texture: 'p-warehouse', scale: 0.92, flipX: true },
   { tile: { tx: 11, ty: 16 }, texture: 'p-factory', scale: 0.88 },
-  { tile: { tx: 16, ty: 6 }, texture: 'p-server', scale: 0.82 },
   { tile: { tx: 16, ty: 16 }, texture: 'p-office-a', scale: 0.86, flipX: true },
-  { tile: { tx: 12, ty: 5 }, texture: 'p-shop', scale: 0.78 },
 
   // Tech quarter structures
   { tile: { tx: 29, ty: 6 }, texture: 'p-techoffice', scale: 0.9 },
@@ -160,7 +202,6 @@ export const PROPS: readonly PropDef[] = [
   // City centre structures
   { tile: { tx: 14, ty: 21 }, texture: 'p-office-a', scale: 0.94 },
   { tile: { tx: 15, ty: 24 }, texture: 'p-office-b', scale: 0.9, flipX: true },
-  { tile: { tx: 26, ty: 21 }, texture: 'p-shop', scale: 0.84 },
   { tile: { tx: 26, ty: 24 }, texture: 'p-cafe', scale: 0.8, flipX: true },
 
   // Residential gardens structures
@@ -184,7 +225,6 @@ export const PROPS: readonly PropDef[] = [
 
   // Industrial yard details
   { tile: { tx: 6, ty: 7 }, texture: 'p-container', scale: 0.9 },
-  { tile: { tx: 7, ty: 6 }, texture: 'p-container', scale: 0.82, flipX: true },
   { tile: { tx: 5, ty: 15 }, texture: 'p-crane', scale: 0.88 },
   { tile: { tx: 4, ty: 6 }, texture: 'p-tree', scale: 0.86 },
   { tile: { tx: 4, ty: 14 }, texture: 'p-tree', scale: 0.92, flipX: true },
@@ -237,7 +277,56 @@ export const BUILDING_DOOR: Record<BuildingId, TilePos> = {
   'security-hub': { tx: 31, ty: 14 },
   'packaging-station': { tx: 14, ty: 10 },
   'deployment-port': { tx: 33, ty: 34 },
+  'frontend-factory': { tx: 7, ty: 3 },
+  'data-factory': { tx: 11, ty: 3 },
+  'infra-factory': { tx: 16, ty: 3 },
+  'review-hall': { tx: 25, ty: 20 },
+  'merge-gate': { tx: 27, ty: 20 },
 };
+
+/** Pull requests walk between a residential doorstep and the civic review landmarks. */
+export const PR_SPAWN: TilePos = { tx: 4, ty: 30 };
+
+/** Plaza and sidewalk spots leave each reviewer enough room to remain readable. */
+export const REVIEW_WAITING_SPOTS: readonly TilePos[] = [
+  { tx: 20, ty: 20 },
+  { tx: 22, ty: 20 },
+  { tx: 20, ty: 22 },
+  { tx: 24, ty: 22 },
+  { tx: 20, ty: 24 },
+  { tx: 22, ty: 24 },
+  { tx: 24, ty: 24 },
+  { tx: 20, ty: 19 },
+  { tx: 24, ty: 19 },
+  { tx: 23, ty: 19 },
+  { tx: 19, ty: 20 },
+  { tx: 19, ty: 24 },
+];
+
+export const PR_ROUTE_TO_REVIEW: readonly TilePos[] = [
+  PR_SPAWN,
+  { tx: 4, ty: 27 },
+  { tx: 18, ty: 27 },
+  { tx: 18, ty: 18 },
+  { tx: 25, ty: 18 },
+  BUILDING_DOOR['review-hall'],
+];
+
+export const PR_ROUTE_TO_MERGE: readonly TilePos[] = [
+  BUILDING_DOOR['review-hall'],
+  { tx: 25, ty: 18 },
+  { tx: 27, ty: 18 },
+  BUILDING_DOOR['merge-gate'],
+];
+
+export const PR_ROUTE_BACK: readonly TilePos[] = [
+  BUILDING_DOOR['review-hall'],
+  { tx: 25, ty: 18 },
+  { tx: 18, ty: 18 },
+  { tx: 18, ty: 27 },
+  { tx: 4, ty: 27 },
+  PR_SPAWN,
+];
 
 /** Each closed route changes heading at a road junction. */
 export const VEHICLE_ROUTES: readonly (readonly TilePos[])[] = [

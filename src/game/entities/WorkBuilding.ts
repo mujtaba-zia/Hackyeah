@@ -1,9 +1,8 @@
 import Phaser from 'phaser';
-import type { StageStatus } from '../state/gameState';
 import { Building, type BuildingOptions } from './Building';
 
-export interface StageVisuals {
-  /** Sprite that spins or pulses while the stage is working. */
+export interface WorkVisuals {
+  /** Sprite that spins or pulses while the building is working. */
   activity: 'gear' | 'scan';
   /** Icon that pops on success. */
   successIcon: 'fx-check' | 'fx-shield';
@@ -11,23 +10,35 @@ export interface StageVisuals {
   smoke: boolean;
 }
 
+/** Worker sprites shown at full load. Two workers per concurrent job. */
+const MAX_WORKERS = 6;
+
 /**
- * A landmark that reacts to its pipeline stage. It consumes a `StageStatus` and
- * nothing else, so it does not care whether the event came from the demo
- * controls, a scripted run or a future Azure DevOps adapter.
+ * A landmark that visibly works.
+ *
+ * The API is split deliberately:
+ *   setBusy / setWorkload  continuous state, re-applied on every simulation tick
+ *   flashSuccess / flashFailure / burstConfetti  one-shot spectacle from events
+ *
+ * Keeping them apart means the four times a second state sync can never cancel
+ * an explosion mid animation, and the building still consumes normalized state
+ * only, so the mock simulator and a future Azure DevOps adapter look identical.
  */
-export class StageBuilding extends Building {
-  private readonly visuals: StageVisuals;
+export class WorkBuilding extends Building {
+  private readonly visuals: WorkVisuals;
   private readonly activity: Phaser.GameObjects.Image;
   private readonly workers: Phaser.GameObjects.Image[] = [];
+  private readonly workerTweens: (Phaser.Tweens.Tween | undefined)[] = [];
   private readonly glow: Phaser.GameObjects.Ellipse;
   private readonly smoke: Phaser.GameObjects.Particles.ParticleEmitter;
   private readonly sparks: Phaser.GameObjects.Particles.ParticleEmitter;
 
   private busyTweens: Phaser.Tweens.Tween[] = [];
-  private status: StageStatus = 'pending';
+  private busy = false;
+  private workload = 0;
+  private failing = false;
 
-  constructor(scene: Phaser.Scene, options: BuildingOptions, visuals: StageVisuals) {
+  constructor(scene: Phaser.Scene, options: BuildingOptions, visuals: WorkVisuals) {
     super(scene, options);
     this.visuals = visuals;
 
@@ -35,14 +46,16 @@ export class StageBuilding extends Building {
     this.addAt(this.glow, 0);
 
     const activityKey = visuals.activity === 'gear' ? 'fx-gear' : 'fx-scan';
-    this.activity = scene.add
-      .image(-4, -this.sprite.displayHeight - 6, activityKey)
-      .setVisible(false);
+    this.activity = scene.add.image(-4, -this.sprite.displayHeight - 6, activityKey).setVisible(false);
     this.add(this.activity);
 
-    for (const dx of [-32, 22]) {
-      const worker = scene.add.image(dx, 12, 'a-worker').setVisible(false);
+    // A fixed pool of worker sprites, revealed as the building gets busier.
+    for (let i = 0; i < MAX_WORKERS; i++) {
+      const worker = scene.add
+        .image(-40 + (i % 3) * 30, 6 + Math.floor(i / 3) * 12, 'a-worker')
+        .setVisible(false);
       this.workers.push(worker);
+      this.workerTweens.push(undefined);
       this.add(worker);
     }
 
@@ -71,30 +84,64 @@ export class StageBuilding extends Building {
       .setDepth(this.depth + 2);
   }
 
-  setStageStatus(status: StageStatus): void {
-    if (status === this.status) return;
-    this.status = status;
-    this.stopBusyAnimation();
+  /** Shared pipeline stage sites: is any run being processed here right now. */
+  setBusy(busy: boolean): void {
+    if (busy === this.busy) return;
+    this.busy = busy;
+    this.refreshActivity();
+  }
 
-    switch (status) {
-      case 'running':
-        this.startBusyAnimation();
-        break;
-      case 'success':
-        this.celebrate();
-        break;
-      case 'failed':
-        this.malfunction();
-        break;
-      case 'pending':
-        this.sprite.clearTint();
-        this.glow.setFillStyle(0xffd166, 0);
-        break;
+  /**
+   * Repository factories: how many jobs this building hosts. Workers, machinery
+   * and smoke scale with it, so the workload is readable without a tooltip.
+   */
+  setWorkload(runningJobs: number, failing: boolean): void {
+    if (runningJobs === this.workload && failing === this.failing) return;
+    this.workload = runningJobs;
+    this.failing = failing;
+
+    const wanted = Math.min(MAX_WORKERS, runningJobs * 2);
+    this.workers.forEach((worker, i) => {
+      const shouldShow = i < wanted;
+      if (shouldShow === worker.visible) return;
+      worker.setVisible(shouldShow);
+      if (shouldShow) {
+        this.workerTweens[i] = this.scene.tweens.add({
+          targets: worker,
+          y: worker.y - 6,
+          duration: 380 + i * 40,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.inOut',
+        });
+      } else {
+        this.workerTweens[i]?.stop();
+        this.workerTweens[i] = undefined;
+      }
+    });
+
+    this.refreshActivity();
+  }
+
+  private get working(): boolean {
+    return this.busy || this.workload > 0;
+  }
+
+  private refreshActivity() {
+    if (this.working) {
+      this.startBusyAnimation();
+      if (this.visuals.smoke && !this.failing) {
+        this.smoke.setParticleTint(0xffffff);
+        this.smoke.start();
+      }
+      return;
     }
+    this.stopBusyAnimation();
+    if (!this.failing) this.smoke.stop();
   }
 
   private startBusyAnimation() {
-    this.sprite.clearTint();
+    if (this.busyTweens.length > 0) return;
     this.activity.setVisible(true).setAngle(0).setScale(1).setAlpha(1);
     this.glow.setFillStyle(0xffd166, 0.2);
 
@@ -116,61 +163,38 @@ export class StageBuilding extends Building {
         repeat: -1,
       }),
     );
-
-    if (this.visuals.smoke) {
-      this.smoke.setParticleTint(0xffffff);
-      this.smoke.start();
-    }
-
-    this.workers.forEach((worker, i) => {
-      worker.setVisible(true);
-      this.busyTweens.push(
-        this.scene.tweens.add({
-          targets: worker,
-          y: worker.y - 7,
-          duration: 420,
-          delay: i * 180,
-          yoyo: true,
-          repeat: -1,
-          ease: 'Sine.inOut',
-        }),
-      );
-    });
   }
 
   private stopBusyAnimation() {
     for (const tween of this.busyTweens) tween.stop();
     this.busyTweens = [];
-    this.smoke.stop();
     this.activity.setVisible(false);
-    for (const worker of this.workers) worker.setVisible(false).setY(12);
+    this.glow.setFillStyle(0xffd166, 0);
   }
 
-  private celebrate() {
-    this.glow.setFillStyle(0x4ade80, 0.45);
-    this.sprite.setTint(0xd6ffd9);
+  flashSuccess(): void {
     this.sparks.setParticleTint(0x4ade80);
-    this.sparks.explode(24);
+    this.sparks.explode(20);
     this.popIcon(this.visuals.successIcon);
+    this.glow.setFillStyle(0x4ade80, 0.4);
     this.scene.tweens.add({
       targets: this.glow,
-      fillAlpha: 0.18,
-      duration: 800,
-      onComplete: () => this.sprite.clearTint(),
+      fillAlpha: this.working ? 0.2 : 0,
+      duration: 900,
     });
   }
 
-  private malfunction() {
-    this.glow.setFillStyle(0xef4444, 0.4);
-    this.sprite.setTint(0xffb3b3);
+  flashFailure(): void {
     this.sparks.setParticleTint(0xff9d5c);
     this.sparks.explode(22);
+    this.popIcon('fx-alert');
+    this.sprite.setTint(0xffb3b3);
     this.smoke.setParticleTint(0x333333);
     this.smoke.start();
-    this.scene.time.delayedCall(2400, () => {
-      if (this.status === 'failed') this.smoke.stop();
+    this.scene.time.delayedCall(2600, () => {
+      this.sprite.clearTint();
+      if (!this.failing) this.refreshActivity();
     });
-    this.popIcon('fx-alert');
 
     // Cartoon wobble, not destruction.
     const baseX = this.sprite.x;
@@ -182,19 +206,12 @@ export class StageBuilding extends Building {
       repeat: 8,
       onComplete: () => this.sprite.setX(baseX),
     });
-    this.scene.tweens.add({
-      targets: this.glow,
-      fillAlpha: { from: 0.45, to: 0.12 },
-      duration: 300,
-      yoyo: true,
-      repeat: 6,
-    });
   }
 
-  /** Big celebration used when the whole pipeline lands. */
+  /** Big celebration used when a deploy lands. */
   burstConfetti(): void {
     this.sparks.setParticleTint(0xffd166);
-    this.sparks.explode(60);
+    this.sparks.explode(50);
   }
 
   private popIcon(texture: string) {
@@ -213,7 +230,7 @@ export class StageBuilding extends Building {
           targets: icon,
           alpha: 0,
           duration: 700,
-          delay: 700,
+          delay: 600,
           onComplete: () => icon.destroy(),
         });
       },

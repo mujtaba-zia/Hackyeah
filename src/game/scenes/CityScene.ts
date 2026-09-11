@@ -1,13 +1,13 @@
 import Phaser from 'phaser';
-import { PipelineArtifact } from '../entities/PipelineArtifact';
-import { PipelineTruck } from '../entities/PipelineTruck';
-import { StageBuilding, type StageVisuals } from '../entities/StageBuilding';
+import { WorkBuilding, type WorkVisuals } from '../entities/WorkBuilding';
 import { gameStore } from '../state/gameStore';
-import { STAGES, STAGE_BUILDING, type PipelineStage } from '../state/gameState';
+import { REPOSITORIES, STAGES, type GameState, type PipelineStage } from '../state/gameState';
+import type { HoverPayload } from '../state/hover';
 import { CameraController } from '../systems/CameraController';
 import { createAmbientLife } from '../systems/AmbientLife';
+import { DeliveryFleet } from '../systems/DeliveryFleet';
 import { PedestrianSystem } from '../systems/PedestrianSystem';
-import { PipelineChoreographer } from '../systems/PipelineChoreographer';
+import { PRCrowd } from '../systems/PRCrowd';
 import { TrafficSystem } from '../systems/TrafficSystem';
 import {
   CITY_CENTER,
@@ -24,6 +24,7 @@ import { createTextures } from '../world/textures';
 
 export interface CitySceneData {
   onSelectionChange: (id: BuildingId | null) => void;
+  onHover: (payload: HoverPayload | null) => void;
   /** Called once the scene is live, so React can issue camera commands. */
   onReady: (scene: CityScene) => void;
 }
@@ -41,12 +42,25 @@ const TERRAIN_TEXTURE: Record<string, string> = {
 /** Ground never overlaps, so a single low depth is enough and saves sorting. */
 const GROUND_DEPTH = -1_000_000;
 
-const STAGE_VISUALS: Record<PipelineStage, StageVisuals> = {
-  build: { activity: 'gear', successIcon: 'fx-check', smoke: true },
-  test: { activity: 'scan', successIcon: 'fx-check', smoke: false },
-  security: { activity: 'scan', successIcon: 'fx-shield', smoke: false },
-  package: { activity: 'gear', successIcon: 'fx-check', smoke: true },
-  deploy: { activity: 'gear', successIcon: 'fx-check', smoke: false },
+/** Which landmark hosts each shared pipeline stage. */
+const STAGE_SITE: Record<PipelineStage, BuildingId> = {
+  build: 'build-factory',
+  test: 'test-lab',
+  security: 'security-hub',
+  package: 'packaging-station',
+  deploy: 'deployment-port',
+};
+
+const DEFAULT_VISUALS: WorkVisuals = { activity: 'gear', successIcon: 'fx-check', smoke: false };
+
+const BUILDING_VISUALS: Partial<Record<BuildingId, WorkVisuals>> = {
+  'build-factory': { activity: 'gear', successIcon: 'fx-check', smoke: true },
+  'packaging-station': { activity: 'gear', successIcon: 'fx-check', smoke: true },
+  'frontend-factory': { activity: 'gear', successIcon: 'fx-check', smoke: true },
+  'data-factory': { activity: 'scan', successIcon: 'fx-check', smoke: true },
+  'infra-factory': { activity: 'gear', successIcon: 'fx-check', smoke: true },
+  'test-lab': { activity: 'scan', successIcon: 'fx-check', smoke: false },
+  'security-hub': { activity: 'scan', successIcon: 'fx-shield', smoke: false },
 };
 
 export class CityScene extends Phaser.Scene {
@@ -55,11 +69,15 @@ export class CityScene extends Phaser.Scene {
   private camControl!: CameraController;
   private traffic!: TrafficSystem;
   private pedestrians!: PedestrianSystem;
-  private choreographer!: PipelineChoreographer;
-  private readonly buildings = new Map<BuildingId, StageBuilding>();
+  private fleet!: DeliveryFleet;
+  private crowd!: PRCrowd;
+  private readonly buildings = new Map<BuildingId, WorkBuilding>();
   private selectedId: BuildingId | null = null;
   private onSelectionChange!: (id: BuildingId | null) => void;
+  private onHover!: (payload: HoverPayload | null) => void;
   private onReady!: (scene: CityScene) => void;
+  /** Last applied ambient level, so health changes do not restart tweens. */
+  private ambientLevel = 1;
 
   constructor() {
     super(CityScene.KEY);
@@ -67,6 +85,7 @@ export class CityScene extends Phaser.Scene {
 
   init(data: CitySceneData) {
     this.onSelectionChange = data.onSelectionChange;
+    this.onHover = data.onHover;
     this.onReady = data.onReady;
   }
 
@@ -79,37 +98,25 @@ export class CityScene extends Phaser.Scene {
     this.createDistrictLabels();
     this.createBuildings();
 
-    const chimneys = PROPS.filter((p) => p.texture === 'p-factory').map((p) => p.tile).slice(0, 3);
+    const chimneys = PROPS.filter((p) => p.texture === 'p-factory')
+      .map((p) => p.tile)
+      .slice(0, 3);
     createAmbientLife(this, chimneys);
 
     this.traffic = new TrafficSystem(this);
     this.pedestrians = new PedestrianSystem(this);
-
-    const truck = new PipelineTruck(this);
-    const emergency = new PipelineTruck(this, 'a-firetruck');
-    const artifact = new PipelineArtifact(this);
+    this.fleet = new DeliveryFleet(this);
+    this.fleet.attach();
+    this.crowd = new PRCrowd(this, this.onHover);
 
     const center = tileToWorld(CITY_CENTER);
     this.camControl = new CameraController(this, { x: center.x, y: center.y, zoom: 0.62 });
     this.camControl.setWorldBounds(this.worldBounds());
-    // The canvas reaches its final size after boot; re-centre once it settles,
-    // but never fight a user who already moved the camera.
     const reframe = () => {
       if (!this.camControl.userMoved) this.camControl.reset(false);
     };
     this.scale.once(Phaser.Scale.Events.RESIZE, reframe);
     this.time.delayedCall(60, reframe);
-
-    this.choreographer = new PipelineChoreographer(this, {
-      buildings: this.buildings,
-      truck,
-      emergency,
-      artifact,
-      traffic: this.traffic,
-      pedestrians: this.pedestrians,
-      camera: this.camControl,
-    });
-    this.choreographer.attach();
 
     // Clicking empty ground clears the selection.
     this.input.on('pointerup', (pointer: Phaser.Input.Pointer) => {
@@ -117,17 +124,42 @@ export class CityScene extends Phaser.Scene {
       if (this.input.hitTestPointer(pointer).length === 0) this.select(null);
     });
 
-    this.applyState();
-    const unsubscribe = gameStore.subscribe(() => this.applyState());
+    this.attachSpectacle();
+    this.applyState(gameStore.getState());
+    const unsubscribe = gameStore.subscribe((state) => this.applyState(state));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       unsubscribe();
-      this.choreographer.destroy();
+      this.fleet.destroy();
+      this.crowd.destroy();
       this.traffic.destroy();
       this.pedestrians.destroy();
       this.camControl.destroy();
     });
 
     this.onReady(this);
+  }
+
+  /** One-shot reactions to domain events, kept apart from the state sync. */
+  private attachSpectacle() {
+    gameStore.bus.on('RUN_SUCCEEDED', (event) => {
+      const run = gameStore.getState().runs.find((candidate) => candidate.id === event.runId);
+      if (!run) return;
+      this.buildings.get(STAGE_SITE.deploy)?.burstConfetti();
+      this.factoryFor(run.repoId)?.flashSuccess();
+    });
+
+    gameStore.bus.on('RUN_FAILED', (event) => {
+      const run = gameStore.getState().runs.find((candidate) => candidate.id === event.runId);
+      this.buildings.get(STAGE_SITE[event.stage])?.flashFailure();
+      if (run) this.factoryFor(run.repoId)?.flashFailure();
+    });
+
+    gameStore.bus.on('SIM_RESET', () => this.fleet.reset());
+  }
+
+  private factoryFor(repoId: string): WorkBuilding | undefined {
+    const repo = REPOSITORIES.find((candidate) => candidate.id === repoId);
+    return repo ? this.buildings.get(repo.factory) : undefined;
   }
 
   /** World rectangle covering the whole grid plus sky margin for the clouds. */
@@ -181,19 +213,20 @@ export class CityScene extends Phaser.Scene {
   }
 
   private createBuildings() {
-    const stageOf = new Map<BuildingId, PipelineStage>(
-      STAGES.map((stage) => [STAGE_BUILDING[stage], stage]),
-    );
-
     for (const def of KEY_BUILDINGS) {
-      const stage = stageOf.get(def.id);
-      if (!stage) continue;
-      const building = new StageBuilding(this, { ...def, interactive: true }, STAGE_VISUALS[stage]);
+      const visuals = BUILDING_VISUALS[def.id] ?? DEFAULT_VISUALS;
+      const building = new WorkBuilding(this, { ...def, interactive: true }, visuals);
+      this.buildings.set(def.id, building);
+
       building.sprite.on('pointerup', () => {
         if (this.camControl.wasDragged) return;
         this.select(def.id);
       });
-      this.buildings.set(def.id, building);
+      // Hover first, click second: the tooltip carries the live detail.
+      building.sprite.on('pointerover', (pointer: Phaser.Input.Pointer) => {
+        this.onHover({ kind: 'factory', buildingId: def.id, x: pointer.x, y: pointer.y });
+      });
+      building.sprite.on('pointerout', () => this.onHover(null));
     }
   }
 
@@ -206,10 +239,27 @@ export class CityScene extends Phaser.Scene {
   }
 
   /** Push normalized game state into the world. The only state to world path. */
-  private applyState() {
-    const { pipeline } = gameStore.getState();
+  private applyState(state: GameState) {
     for (const stage of STAGES) {
-      this.buildings.get(STAGE_BUILDING[stage])?.setStageStatus(pipeline.stages[stage]);
+      const active = state.runs.some((run) => run.status === 'running' && run.stage === stage);
+      this.buildings.get(STAGE_SITE[stage])?.setBusy(active);
+    }
+
+    for (const repo of state.repositories) {
+      const runs = state.runs.filter((run) => run.repoId === repo.id);
+      const running = runs.filter((run) => run.status === 'running').length;
+      const failing = runs.some((run) => run.status === 'failed' && isRecent(run.endedAtSim, state));
+      this.buildings.get(repo.factory)?.setWorkload(running, failing);
+    }
+
+    this.crowd.sync(state);
+
+    // City health quietly damps the streets rather than staging a disaster.
+    const level = state.cityHealth >= 80 ? 1 : state.cityHealth >= 50 ? 0.75 : 0.5;
+    if (level !== this.ambientLevel) {
+      this.ambientLevel = level;
+      this.traffic.setActivity(level);
+      this.pedestrians.setActivity(level);
     }
   }
 
@@ -220,4 +270,9 @@ export class CityScene extends Phaser.Scene {
   update(time: number, delta: number) {
     this.camControl.update(time, delta);
   }
+}
+
+/** A failure keeps the factory smoking for 30 simulated minutes. */
+function isRecent(endedAtSim: number | null, state: GameState): boolean {
+  return endedAtSim !== null && state.sim.time - endedAtSim < 30;
 }

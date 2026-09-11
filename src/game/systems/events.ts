@@ -1,14 +1,36 @@
-import type { PipelineStage } from '../state/gameState';
+import type {
+  ActivityEntry,
+  PipelineRun,
+  PipelineStage,
+  PullRequest,
+  PrStatus,
+  RepoId,
+  RunHistoryEntry,
+} from '../state/gameState';
 
-/** Events that coordinate the locally simulated pipeline journey. */
+/** Events emitted by the local software-organization simulation. */
 export type GameEvent =
-  | { type: 'PIPELINE_STARTED' }
-  | { type: 'PIPELINE_STAGE_STARTED'; stage: PipelineStage }
-  | { type: 'PIPELINE_STAGE_SUCCEEDED'; stage: PipelineStage }
-  | { type: 'PIPELINE_STAGE_FAILED'; stage: PipelineStage }
-  | { type: 'PIPELINE_COMPLETED' }
-  | { type: 'PIPELINE_RESET' }
-  | { type: 'SET_FAIL_STAGE'; stage: PipelineStage | null }
+  | { type: 'SIM_TICK'; deltaSim: number }
+  | { type: 'SIM_SET_SPEED'; speed: 1 | 2 | 4 }
+  | { type: 'SIM_SET_RUNNING'; running: boolean }
+  | { type: 'SIM_RESET'; seed: number; snapshot: SimSnapshot }
+  | { type: 'RUN_STARTED'; run: PipelineRun }
+  | { type: 'RUN_STAGE_ADVANCED'; runId: string; stage: PipelineStage }
+  | { type: 'RUN_SUCCEEDED'; runId: string }
+  | { type: 'RUN_FAILED'; runId: string; stage: PipelineStage }
+  | { type: 'PR_CREATED'; pr: PullRequest }
+  | { type: 'PR_STATUS_CHANGED'; prId: string; status: PrStatus }
+  | { type: 'PR_MERGED'; prId: string }
   | { type: 'SET_FOLLOW_CAMERA'; follow: boolean };
+
+/** Whole world seed state, used for startup and simulation resets. */
+export interface SimSnapshot {
+  runs: PipelineRun[];
+  history: Record<RepoId, RunHistoryEntry[]>;
+  pullRequests: PullRequest[];
+  activity: ActivityEntry[];
+  time: number;
+}
+
 
 export type GameEventType = GameEvent['type'];

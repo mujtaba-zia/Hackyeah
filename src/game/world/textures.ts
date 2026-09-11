@@ -97,6 +97,61 @@ function building(
   });
 }
 
+type PrFace = 'happy' | 'calm' | 'watching' | 'pacing' | 'annoyed' | 'angry';
+
+/** Matching canvases and anchors keep a pull request in place as its mood changes. */
+function prCharacter(scene: Phaser.Scene, key: string, body: number, face: PrFace) {
+  bake(scene, key, 22, 34, 0.9, (g) => {
+    g.fillStyle(0x35414c);
+    g.fillRect(6, 27, 3, 5);
+    g.fillRect(13, 27, 3, 5);
+    g.fillStyle(body);
+    g.fillRect(5, 15, 12, 13);
+    g.fillRect(3, 18, 2, 7);
+    g.fillRect(17, 18, 2, 7);
+    g.fillStyle(0xf2c9a0);
+    g.fillCircle(11, 9, 6);
+    g.fillStyle(0x5a4038);
+    g.fillRect(6, 3, 10, 3);
+    g.fillStyle(0x273747);
+    g.fillCircle(9, 9, 1);
+    g.fillCircle(13, 9, 1);
+    g.lineStyle(1, 0x70483d);
+
+    switch (face) {
+      case 'happy':
+        g.beginPath();
+        g.arc(11, 11, 3, 0, Math.PI);
+        g.strokePath();
+        break;
+      case 'calm':
+        g.lineBetween(9, 13, 13, 13);
+        break;
+      case 'watching':
+        g.fillStyle(0x70483d);
+        g.fillCircle(11, 13, 1);
+        break;
+      case 'pacing':
+        g.lineBetween(10, 13, 12, 13);
+        g.fillStyle(0xd89072);
+        g.fillCircle(6, 13, 1);
+        break;
+      case 'annoyed':
+        g.beginPath();
+        g.arc(11, 14, 3, Math.PI, Math.PI * 2);
+        g.strokePath();
+        break;
+      case 'angry':
+        g.lineBetween(7, 7, 10, 8);
+        g.lineBetween(15, 7, 12, 8);
+        g.beginPath();
+        g.arc(11, 14, 3, Math.PI, Math.PI * 2);
+        g.strokePath();
+        break;
+    }
+  });
+}
+
 export function createTextures(scene: Phaser.Scene): void {
   // ---- terrain ------------------------------------------------------------
   tile(scene, 't-grass', 0x7ec850, 0x6cb544, (g) => {
@@ -248,6 +303,115 @@ export function createTextures(scene: Phaser.Scene): void {
       g.fillRect(x + 37, y + 2, 6, 16);
     },
     10,
+  );
+  building(
+    scene,
+    'b-frontend',
+    96,
+    60,
+    { top: 0xa47bd8, left: 0x63448d, right: 0x8060b1 },
+    (g, x, y) => {
+      windows(g, x, y, 96, 60, 2, 0xf1ddff);
+      g.fillStyle(0xdcc8ff);
+      g.fillRect(x + 44, y - 20, 8, 24);
+      g.fillStyle(0x64e6ff);
+      g.fillCircle(x + 48, y - 22, 5);
+      g.fillStyle(0x7450a0);
+      g.fillRect(x + 21, y + 30, 12, 18);
+      g.fillRect(x + 63, y + 30, 12, 18);
+    },
+    28,
+  );
+  building(
+    scene,
+    'b-data',
+    102,
+    54,
+    { top: 0xf0c85b, left: 0xa67829, right: 0xd4aa43 },
+    (g, x, y) => {
+      windows(g, x, y, 102, 54, 1, 0xfff0b3);
+      g.fillStyle(0xd8d1bc);
+      g.fillRect(x + 17, y - 18, 18, 39);
+      g.fillRect(x + 65, y - 14, 18, 35);
+      g.fillEllipse(x + 26, y - 18, 18, 10);
+      g.fillEllipse(x + 74, y - 14, 18, 10);
+      g.fillStyle(0x9d8250);
+      g.fillRect(x + 24, y + 5, 4, 18);
+      g.fillRect(x + 72, y + 9, 4, 16);
+    },
+    26,
+  );
+  building(
+    scene,
+    'b-infra',
+    94,
+    54,
+    { top: 0x8dc978, left: 0x4b7b4e, right: 0x6eaa67 },
+    (g, x, y) => {
+      windows(g, x, y, 94, 54, 1, 0xe3ffd5);
+      g.fillStyle(0x4d6c50);
+      g.fillRect(x + 17, y + 18, 8, 38);
+      g.fillRect(x + 67, y + 22, 8, 34);
+      g.fillRect(x + 21, y + 24, 50, 7);
+      g.fillStyle(0x9de89a);
+      g.fillCircle(x + 71, y + 22, 5);
+      g.fillStyle(0x35563e);
+      g.fillRect(x + 41, y - 12, 11, 25);
+      g.fillStyle(0x73d67d);
+      g.fillRect(x + 41, y - 12, 11, 5);
+    },
+    18,
+  );
+  building(
+    scene,
+    'b-reviewhall',
+    104,
+    58,
+    { top: 0xf7efdd, left: 0xc0b293, right: 0xe1d4b6 },
+    (g, x, y) => {
+      g.fillStyle(0xfffbef);
+      g.fillPoints(pts([x + 52, y - 27], [x + 85, y + 5], [x + 19, y + 5]), true);
+      g.fillStyle(0xd4b66e);
+      g.fillRect(x + 20, y + 5, 64, 4);
+      g.fillStyle(0xfff8e8);
+      g.fillRect(x + 24, y + 50, 8, 42);
+      g.fillRect(x + 42, y + 50, 8, 42);
+      g.fillRect(x + 60, y + 50, 8, 42);
+      g.fillRect(x + 78, y + 50, 8, 42);
+      g.fillStyle(0xc7b693);
+      g.fillRect(x + 21, y + 48, 14, 4);
+      g.fillRect(x + 39, y + 48, 14, 4);
+      g.fillRect(x + 57, y + 48, 14, 4);
+      g.fillRect(x + 75, y + 48, 14, 4);
+      g.fillStyle(0x546276);
+      g.fillRect(x + 48, y + 73, 12, 19);
+      g.fillStyle(0xe5d8bd);
+      g.fillRect(x + 29, y + 91, 46, 6);
+      g.fillRect(x + 35, y + 97, 34, 5);
+    },
+    32,
+  );
+  building(
+    scene,
+    'b-mergegate',
+    76,
+    40,
+    { top: 0xaeb8b8, left: 0x657174, right: 0x8c999a },
+    (g, x, y) => {
+      g.fillStyle(0x58666a);
+      g.fillRect(x + 11, y + 35, 10, 37);
+      g.fillRect(x + 55, y + 35, 10, 37);
+      g.fillEllipse(x + 38, y + 37, 56, 26);
+      g.fillStyle(0x2e4241);
+      g.fillEllipse(x + 38, y + 41, 38, 15);
+      g.fillStyle(0x75ee8c);
+      g.fillCircle(x + 38, y + 28, 7);
+      g.fillStyle(0xe1fff0);
+      g.fillCircle(x + 38, y + 28, 3);
+      g.fillStyle(0xc2ccd0);
+      g.fillRect(x + 19, y + 69, 38, 5);
+    },
+    30,
   );
 
   // ---- decorative structures ---------------------------------------------
@@ -444,6 +608,22 @@ export function createTextures(scene: Phaser.Scene): void {
     g.fillRect(10, 27, 3, 4);
   });
 
+  // ---- pull request actors -----------------------------------------------
+  prCharacter(scene, 'pr-happy', 0x55bd70, 'happy');
+  prCharacter(scene, 'pr-calm', 0x5c9fb8, 'calm');
+  prCharacter(scene, 'pr-watching', 0xe5b84f, 'watching');
+  prCharacter(scene, 'pr-pacing', 0xe99546, 'pacing');
+  prCharacter(scene, 'pr-annoyed', 0xdb704f, 'annoyed');
+  prCharacter(scene, 'pr-angry', 0xc74d4d, 'angry');
+  bake(scene, 'pr-badge', 24, 24, 0.5, (g) => {
+    g.fillStyle(0x3d4a55);
+    g.fillCircle(12, 12, 11);
+    g.fillStyle(0xffffff);
+    g.fillCircle(12, 12, 9);
+    g.lineStyle(1, 0xd8e7ef);
+    g.strokeCircle(12, 12, 9);
+  });
+
   // ---- stage effects ------------------------------------------------------
   bake(scene, 'fx-gear', 40, 40, 0.5, (g) => {
     g.fillStyle(0xffd166);
@@ -515,5 +695,11 @@ export function createTextures(scene: Phaser.Scene): void {
     g.fillRect(12, 17, 8, 3);
     g.fillStyle(0xffd166);
     g.fillRect(14, 8, 4, 10);
+  });
+  bake(scene, 'fx-confetti', 10, 10, 0.5, (g) => {
+    g.fillStyle(0xffd166);
+    g.fillRect(1, 1, 8, 8);
+    g.fillStyle(0xffffff, 0.75);
+    g.fillRect(2, 2, 3, 3);
   });
 }
