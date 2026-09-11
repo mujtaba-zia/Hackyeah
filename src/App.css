@@ -1,0 +1,105 @@
+.app {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* Overlays float above the canvas; only the panels capture the mouse. */
+.app__left,
+.app__right {
+  position: absolute;
+  top: 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 256px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.app__left {
+  left: 16px;
+}
+
+.app__right {
+  right: 16px;
+}
+
+.app__left > *,
+.app__right > * {
+  pointer-events: auto;
+}
+
+.app__title {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 2;
+  font-size: 20px;
+  font-weight: 700;
+  color: #0d2135;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.app__title span {
+  font-weight: 500;
+  opacity: 0.65;
+}
+
+.app__hint {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #23374b;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
+/* Shared panel chrome */
+.panel {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 8px 24px rgba(14, 35, 56, 0.18);
+  backdrop-filter: blur(4px);
+}
+
+.panel h2 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #5b7189;
+}
+
+.dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: #9aa8b6;
+}
+
+.dot--running {
+  background: #f5a524;
+  animation: pulse 1s ease-in-out infinite;
+}
+.dot--success {
+  background: #2fbf6d;
+}
+.dot--failed {
+  background: #e4573d;
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}

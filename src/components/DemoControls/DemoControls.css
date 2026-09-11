@@ -1,0 +1,42 @@
+.demo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.demo__btn {
+  padding: 10px 12px;
+  border: none;
+  border-radius: 10px;
+  background: #e8eef5;
+  color: #16283a;
+  font-size: 14px;
+  font-weight: 600;
+  transition: transform 120ms ease, filter 120ms ease;
+}
+
+.demo__btn:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+.demo__btn:active {
+  transform: translateY(0);
+}
+
+.demo__btn--run {
+  background: #f5a524;
+  color: #3a2a00;
+}
+.demo__btn--ok {
+  background: #2fbf6d;
+  color: #04240f;
+}
+.demo__btn--fail {
+  background: #e4573d;
+  color: #2c0800;
+}
+.demo__btn--ghost {
+  background: transparent;
+  border: 1px solid #c3d0dd;
+}
