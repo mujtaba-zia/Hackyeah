@@ -1,3 +1,4 @@
+import { healthBand } from '../../game/state/gameState';
 import { useGameState } from '../../hooks/useGameState';
 import './HUD.css';
 
@@ -9,12 +10,15 @@ export function HUD() {
   const runningRuns = state.runs.filter((run) => run.status === 'running').length;
   const failedRuns = state.runs.filter((run) => run.status === 'failed').length;
   const openPullRequests = state.pullRequests.length;
+  const band = healthBand(health);
 
   return (
     <section className="hud panel" aria-label="City overview">
       <div className="hud__heading">
         <h2>City Health</h2>
         <p className={`hud__value hud__value--${healthTone}`}>{health}%</p>
+      </div>
+      <div className={`hud__band hud__band--${band}`}>{band.toUpperCase()}
       </div>
       <div
         className="hud__bar"

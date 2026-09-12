@@ -8,6 +8,7 @@ import { createAmbientLife } from '../systems/AmbientLife';
 import { DeliveryFleet } from '../systems/DeliveryFleet';
 import { PedestrianSystem } from '../systems/PedestrianSystem';
 import { PRCrowd } from '../systems/PRCrowd';
+import { CityEventStage } from '../systems/cityEvents/CityEventStage';
 import { TrafficSystem } from '../systems/TrafficSystem';
 import {
   CITY_CENTER,
@@ -71,6 +72,7 @@ export class CityScene extends Phaser.Scene {
   private pedestrians!: PedestrianSystem;
   private fleet!: DeliveryFleet;
   private crowd!: PRCrowd;
+  private eventStage!: CityEventStage;
   private readonly buildings = new Map<BuildingId, WorkBuilding>();
   private selectedId: BuildingId | null = null;
   private onSelectionChange!: (id: BuildingId | null) => void;
@@ -108,6 +110,12 @@ export class CityScene extends Phaser.Scene {
     this.fleet = new DeliveryFleet(this);
     this.fleet.attach();
     this.crowd = new PRCrowd(this, this.onHover);
+    this.eventStage = new CityEventStage(this, {
+      traffic: this.traffic,
+      pedestrians: this.pedestrians,
+      buildings: this.buildings,
+    });
+    this.eventStage.attach();
 
     const center = tileToWorld(CITY_CENTER);
     this.camControl = new CameraController(this, { x: center.x, y: center.y, zoom: 0.62 });
@@ -129,6 +137,7 @@ export class CityScene extends Phaser.Scene {
     const unsubscribe = gameStore.subscribe((state) => this.applyState(state));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       unsubscribe();
+      this.eventStage.destroy();
       this.fleet.destroy();
       this.crowd.destroy();
       this.traffic.destroy();
@@ -267,8 +276,14 @@ export class CityScene extends Phaser.Scene {
     this.camControl.reset();
   }
 
+  /** Smoothly look at a city event without stealing control: a drag interrupts. */
+  focusOnPoint(x: number, y: number) {
+    this.camControl.focusOn(x, y, 0.95);
+  }
+
   update(time: number, delta: number) {
     this.camControl.update(time, delta);
+    this.eventStage.update();
   }
 }
 

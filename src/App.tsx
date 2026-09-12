@@ -3,9 +3,14 @@ import { GameCanvas } from './components/GameCanvas/GameCanvas';
 import { HUD } from './components/HUD/HUD';
 import { SimBar } from './components/SimBar/SimBar';
 import { ActivityFeed } from './components/ActivityFeed/ActivityFeed';
+import { CityEventsPanel } from './components/CityEventsPanel/CityEventsPanel';
+import { EventBanner } from './components/EventBanner/EventBanner';
 import { DebugPanel } from './components/DebugPanel/DebugPanel';
 import { Tooltip } from './components/Tooltip/Tooltip';
 import { BuildingPanel } from './components/BuildingPanel/BuildingPanel';
+import { sound } from './audio/SoundManager';
+import { cityEvents } from './game/events/CityEventDirector';
+import { gameStore } from './game/state/gameStore';
 import type { CityScene } from './game/scenes/CityScene';
 import type { HoverPayload } from './game/state/hover';
 import type { BuildingId } from './game/world/cityLayout';
@@ -22,15 +27,36 @@ export default function App() {
     sceneRef.current = scene;
   }, []);
 
-  // The organization runs itself: no button press is required to see activity.
+  // The organization runs itself, and the city reacts to it. No button needed.
   useEffect(() => {
     simulation.start();
-    return () => simulation.destroy();
+    cityEvents.start();
+
+    // Audio cues ride the same event bus as everything else.
+    const offSuccess = gameStore.bus.on('RUN_SUCCEEDED', () => sound.play('success'));
+    const offFailure = gameStore.bus.on('RUN_FAILED', () => sound.play('failure'));
+    const offEvent = gameStore.bus.on('CITY_EVENT_STARTED', (event) => {
+      if (event.event.severity === 'major' || event.event.severity === 'chaotic') {
+        sound.play(event.event.id === 'ufo' ? 'ufo' : 'alarm');
+      } else {
+        sound.play('celebrate');
+      }
+    });
+
+    return () => {
+      offSuccess();
+      offFailure();
+      offEvent();
+      cityEvents.destroy();
+      simulation.destroy();
+    };
   }, []);
 
   return (
     <div className="app">
       <GameCanvas onSelectionChange={setSelected} onHover={setHover} onSceneReady={handleSceneReady} />
+
+      <EventBanner onViewEvent={(focus) => sceneRef.current?.focusOnPoint(focus.x, focus.y)} />
 
       <div className="app__left">
         <SimBar onToggleDebug={() => setDebugOpen((open) => !open)} debugOpen={debugOpen} />
@@ -40,6 +66,7 @@ export default function App() {
       <div className="app__right">
         <HUD />
         <ActivityFeed />
+        <CityEventsPanel />
         {selected && <BuildingPanel buildingId={selected} onClose={() => setSelected(null)} />}
       </div>
 

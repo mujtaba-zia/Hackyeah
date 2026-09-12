@@ -64,3 +64,23 @@
   font-size: 11px;
   font-variant-numeric: tabular-nums;
 }
+
+.hud__band {
+  margin: 2px 0 8px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.hud__band--thriving {
+  color: #2fbf6d;
+}
+.hud__band--healthy {
+  color: #3b8ea8;
+}
+.hud__band--unstable {
+  color: #d98324;
+}
+.hud__band--critical {
+  color: #e4573d;
+}

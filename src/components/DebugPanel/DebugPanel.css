@@ -92,3 +92,30 @@
   outline: 2px solid #2f7dc1;
   outline-offset: 2px;
 }
+
+.debug-panel__events {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.debug-panel__event {
+  padding: 5px 4px;
+  border: 1px solid #d3dde7;
+  border-radius: 7px;
+  background: #f7fafd;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #35506b;
+}
+
+.debug-panel__event:hover {
+  background: #e7f0f9;
+}
+
+.debug-panel__volume {
+  width: 76px;
+}

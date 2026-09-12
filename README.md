@@ -16,6 +16,31 @@ authentication and no network access.
 Milestone 1: living city foundation. Done.
 Milestone 2: expanded city and the full five stage pipeline journey. Done.
 Milestone 3: autonomous living city simulation. Done.
+Milestone 4: city events and visual overhaul. Done.
+
+## City events
+
+A City Event Director watches the simulated organization and stages consequences. It only
+reads simulation state and only emits two presentation events, so a tornado can never
+delete a repository, a run or a pull request.
+
+```
+engineering health + failure streaks + PR pressure
+          |
+          v
+   CityEventDirector   weighted pick, per event and per severity cooldowns
+          |
+          v
+CITY_EVENT_STARTED -> CityEventStage -> controllers -> sprites, particles, tweens
+```
+
+Thirteen events across four severities: tornado, UFO, meteor, factory fire, blackout,
+traffic jam, bug invasion, pull request protest, deployment parade, fireworks, rainbow,
+construction boom and repair crews. Disasters need an unstable or critical city,
+celebrations need a healthy one, and the software flavoured events key off failures and
+review pressure rather than the health number alone. At most one major or chaotic event
+runs at a time, the last three fired events are penalised so nothing repeats, and every
+controller tracks what it created so it cleans itself up on end, on reset and on shutdown.
 
 ## What works
 
@@ -42,6 +67,18 @@ World
 - Factory workers scale with the number of jobs the repository is running, so workload is
   readable without opening anything.
 - Delivery trucks carry artifacts between stage sites, up to four deliveries at once.
+
+Milestone 4 additions
+
+- Reusable effect library (smoke, fire, sparks, confetti, debris, beam, dust, wind, rain,
+  shake, flash) that every event controller shares.
+- Event banners with a View Event button, a city event history panel, and an edge marker
+  that points at an event happening off screen.
+- City Health now shows a band: THRIVING, HEALTHY, UNSTABLE or CRITICAL, and the band
+  gates which events can fire. A damaged city also gets quieter streets.
+- Debug panel can force any of the thirteen events through the same director path used by
+  automatic triggers, alongside the existing simulation controls.
+- Lightweight synthesised audio (no binary assets), muted by default with a volume slider.
 
 Interface
 

@@ -702,4 +702,355 @@ export function createTextures(scene: Phaser.Scene): void {
     g.fillStyle(0xffffff, 0.75);
     g.fillRect(2, 2, 3, 3);
   });
+
+  createMilestone4Art(scene);
+}
+
+/**
+ * Milestone 4 additions: reusable effect art, city event actors, extra worker
+ * states and small environment detail. Kept in its own pass so the Milestone 1
+ * to 3 art above stays untouched and easy to compare.
+ */
+function createMilestone4Art(scene: Phaser.Scene): void {
+  // ---- effect art used by the Effects library ------------------------------
+  bake(scene, 'fx-fire', 26, 34, 0.9, (g) => {
+    g.fillStyle(0xff6b2c);
+    g.fillEllipse(13, 22, 22, 24);
+    g.fillStyle(0xffa62c);
+    g.fillEllipse(13, 25, 14, 17);
+    g.fillStyle(0xffe57a);
+    g.fillEllipse(13, 28, 7, 9);
+  });
+  bake(scene, 'fx-dust', 26, 26, 0.5, (g) => {
+    g.fillStyle(0xd9cfbb, 0.5);
+    g.fillCircle(13, 13, 12);
+    g.fillStyle(0xefe7d6, 0.6);
+    g.fillCircle(10, 10, 7);
+  });
+  bake(scene, 'fx-debris', 14, 12, 0.5, (g) => {
+    g.fillStyle(0x6c5a44);
+    g.fillPoints(pts([0, 4], [7, 0], [14, 5], [9, 12], [2, 10]), true);
+  });
+  bake(scene, 'fx-beam', 64, 170, 0.02, (g) => {
+    // Brightest at the top so it reads as light cast downward from the saucer.
+    for (let i = 0; i < 17; i++) {
+      const t = i / 16;
+      g.fillStyle(0x9ff5c8, 0.42 * (1 - t) + 0.05);
+      const halfWidth = 8 + t * 24;
+      g.fillRect(32 - halfWidth, i * 10, halfWidth * 2, 11);
+    }
+  });
+  bake(scene, 'fx-star', 20, 20, 0.5, (g) => {
+    g.fillStyle(0xfff6c2);
+    g.fillPoints(pts([10, 0], [13, 7], [20, 10], [13, 13], [10, 20], [7, 13], [0, 10], [7, 7]), true);
+  });
+  bake(scene, 'fx-drop', 6, 16, 0.5, (g) => {
+    g.fillStyle(0xbfe4ff, 0.8);
+    g.fillRect(2, 0, 2, 16);
+  });
+
+  // ---- city event actors ---------------------------------------------------
+  bake(scene, 'ev-tornado', 96, 156, 0.96, (g) => {
+    // Stacked ellipses from a wide top to a narrow foot read as a funnel.
+    for (let i = 0; i < 13; i++) {
+      const t = i / 12;
+      g.fillStyle(0x8b93a3, 0.32 + t * 0.28);
+      g.fillEllipse(48 + Math.sin(t * 5) * 9, 8 + t * 140, 78 - t * 62, 22 - t * 13);
+    }
+    g.fillStyle(0x5f6674, 0.5);
+    g.fillEllipse(48, 148, 34, 12);
+  });
+  bake(scene, 'ev-ufo', 124, 66, 0.5, (g) => {
+    g.fillStyle(0x9ff5c8, 0.35);
+    g.fillEllipse(62, 44, 118, 26);
+    g.fillStyle(0x8f9bb3);
+    g.fillEllipse(62, 40, 112, 30);
+    g.fillStyle(0xb9c6dd);
+    g.fillEllipse(62, 34, 96, 22);
+    g.fillStyle(0x7de8ff, 0.9);
+    g.fillEllipse(62, 20, 46, 30);
+    g.fillStyle(0xd8fbff, 0.8);
+    g.fillEllipse(54, 16, 18, 12);
+    g.fillStyle(0xffd166);
+    for (let i = 0; i < 5; i++) g.fillCircle(24 + i * 19, 44, 5);
+  });
+  bake(scene, 'ev-bug', 38, 30, 0.85, (g) => {
+    g.fillStyle(0x2f3b2a);
+    g.fillEllipse(19, 17, 26, 18);
+    g.fillStyle(0x6bbf4a);
+    g.fillEllipse(19, 15, 22, 14);
+    g.fillStyle(0x2f3b2a);
+    for (const dx of [-9, 0, 9]) {
+      g.fillRect(19 + dx - 1, 20, 2, 8);
+      g.fillRect(19 + dx - 6, 24, 6, 2);
+    }
+    g.lineStyle(2, 0x2f3b2a);
+    g.lineBetween(14, 8, 9, 1);
+    g.lineBetween(24, 8, 29, 1);
+    g.fillStyle(0xffffff);
+    g.fillCircle(15, 12, 3);
+    g.fillCircle(23, 12, 3);
+    g.fillStyle(0x1b1b1b);
+    g.fillCircle(15, 12, 1.5);
+    g.fillCircle(23, 12, 1.5);
+  });
+  bake(scene, 'ev-meteor', 60, 44, 0.5, (g) => {
+    g.fillStyle(0xff8a3d, 0.55);
+    g.fillPoints(pts([2, 22], [30, 8], [30, 36]), true);
+    g.fillStyle(0xffd166, 0.7);
+    g.fillPoints(pts([12, 22], [32, 14], [32, 30]), true);
+    g.fillStyle(0x5a4636);
+    g.fillCircle(42, 22, 15);
+    g.fillStyle(0x7a6350);
+    g.fillCircle(38, 18, 6);
+  });
+  bake(scene, 'ev-crater', 120, 62, 0.5, (g) => {
+    g.fillStyle(0x6b5a46, 0.9);
+    g.fillEllipse(60, 31, 116, 56);
+    g.fillStyle(0x4c3f31, 0.95);
+    g.fillEllipse(60, 33, 88, 40);
+    g.fillStyle(0x3a2f25);
+    g.fillEllipse(60, 34, 54, 22);
+  });
+  bake(scene, 'ev-float', 74, 54, 0.86, (g) => {
+    block(g, 4, 18, 66, 16, { top: 0xffd166, left: 0xd08a1f, right: 0xf3b23c });
+    g.fillStyle(0x4ec3f7);
+    g.fillRect(20, 8, 34, 14);
+    g.fillStyle(0xffffff);
+    g.fillRect(26, 12, 22, 5);
+    g.fillStyle(0xef5f8c);
+    g.fillCircle(18, 6, 6);
+    g.fillStyle(0x7ce38b);
+    g.fillCircle(32, 3, 6);
+    g.fillStyle(0x8fd0ff);
+    g.fillCircle(46, 6, 6);
+  });
+  bake(scene, 'ev-rainbow', 420, 210, 0.5, (g) => {
+    const bands = [0xff6b6b, 0xffa62c, 0xffe066, 0x6bd47e, 0x5bb8ff, 0xa06bff];
+    bands.forEach((color, i) => {
+      g.lineStyle(14, color, 0.55);
+      g.beginPath();
+      g.arc(210, 205, 190 - i * 15, Math.PI, 0);
+      g.strokePath();
+    });
+  });
+  for (const [key, tint] of [
+    ['ev-sign-a', 0xffffff],
+    ['ev-sign-b', 0xffe9a8],
+    ['ev-sign-c', 0xd8f0ff],
+  ] as const) {
+    bake(scene, key, 40, 54, 0.95, (g) => {
+      g.fillStyle(0x8a5a3b);
+      g.fillRect(18, 26, 4, 26);
+      g.fillStyle(tint);
+      g.fillRect(2, 2, 36, 26);
+      g.lineStyle(2, 0x35506b, 0.9);
+      g.strokeRect(2, 2, 36, 26);
+      g.fillStyle(0x35506b, 0.75);
+      g.fillRect(7, 8, 26, 3);
+      g.fillRect(7, 14, 20, 3);
+      g.fillRect(7, 20, 24, 3);
+    });
+  }
+  bake(scene, 'ev-balloon', 60, 86, 0.9, (g) => {
+    g.fillStyle(0xef5f8c);
+    g.fillEllipse(30, 30, 52, 56);
+    g.fillStyle(0xffd166);
+    g.fillEllipse(30, 30, 18, 56);
+    g.lineStyle(1, 0x8a5a3b);
+    g.lineBetween(18, 54, 24, 70);
+    g.lineBetween(42, 54, 36, 70);
+    g.fillStyle(0x8a5a3b);
+    g.fillRect(22, 68, 16, 12);
+  });
+  bake(scene, 'ev-firework', 24, 24, 0.5, (g) => {
+    g.fillStyle(0xffffff);
+    g.fillCircle(12, 12, 5);
+    g.fillStyle(0xffe066, 0.9);
+    g.fillCircle(12, 12, 9);
+  });
+
+  // ---- extra worker states -------------------------------------------------
+  const worker = (
+    key: string,
+    shirt: number,
+    draw: (g: Phaser.GameObjects.Graphics) => void,
+  ) => {
+    bake(scene, key, 26, 38, 0.9, (g) => {
+      g.fillStyle(shirt);
+      g.fillRect(8, 18, 10, 15);
+      g.fillStyle(0xf2c9a0);
+      g.fillCircle(13, 13, 6);
+      draw(g);
+    });
+  };
+  worker('a-worker-hammer', 0x3b6ea8, (g) => {
+    g.fillStyle(0xffc23d);
+    g.fillEllipse(13, 8, 16, 9);
+    g.fillStyle(0x8a5a3b);
+    g.fillRect(19, 10, 3, 12);
+    g.fillStyle(0x6b7480);
+    g.fillRect(17, 8, 8, 5);
+  });
+  worker('a-worker-cheer', 0x3fa66b, (g) => {
+    g.fillStyle(0xf2c9a0);
+    g.fillRect(3, 8, 4, 11);
+    g.fillRect(19, 8, 4, 11);
+    g.fillStyle(0x1b1b1b);
+    g.fillCircle(11, 12, 1.4);
+    g.fillCircle(15, 12, 1.4);
+    g.lineStyle(1.6, 0x1b1b1b);
+    g.beginPath();
+    g.arc(13, 15, 3, 0, Math.PI);
+    g.strokePath();
+  });
+  worker('a-worker-panic', 0xe4573d, (g) => {
+    g.fillStyle(0xf2c9a0);
+    g.fillRect(2, 6, 4, 10);
+    g.fillRect(20, 6, 4, 10);
+    g.fillStyle(0xffffff);
+    g.fillCircle(11, 12, 2.4);
+    g.fillCircle(16, 12, 2.4);
+    g.fillStyle(0x1b1b1b);
+    g.fillCircle(11, 12, 1.2);
+    g.fillCircle(16, 12, 1.2);
+    g.fillEllipse(13, 17, 5, 4);
+  });
+  worker('a-firefighter', 0xc9342a, (g) => {
+    g.fillStyle(0xf5d547);
+    g.fillEllipse(13, 7, 18, 10);
+    g.fillStyle(0xf5d547);
+    g.fillRect(8, 24, 10, 3);
+    g.fillStyle(0x2f3b4a);
+    g.fillRect(17, 20, 8, 3);
+  });
+  worker('a-repair', 0xf5a524, (g) => {
+    g.fillStyle(0xfff08a);
+    g.fillRect(8, 20, 10, 4);
+    g.fillStyle(0xffc23d);
+    g.fillEllipse(13, 8, 16, 9);
+    g.fillStyle(0x6b7480);
+    g.fillRect(18, 26, 9, 7);
+  });
+
+  // ---- environment detail --------------------------------------------------
+  bake(scene, 'p-flowers', 30, 20, 0.8, (g) => {
+    g.fillStyle(0x4fba5c);
+    g.fillEllipse(15, 14, 22, 8);
+    for (const [x, y, c] of [
+      [8, 10, 0xff6b8b],
+      [15, 7, 0xffe066],
+      [22, 11, 0xa06bff],
+      [12, 13, 0xffffff],
+    ] as const) {
+      g.fillStyle(c);
+      g.fillCircle(x, y, 2.6);
+    }
+  });
+  bake(scene, 'p-rock', 26, 18, 0.85, (g) => {
+    g.fillStyle(0x9aa3ad);
+    g.fillPoints(pts([2, 14], [8, 4], [18, 3], [24, 12], [14, 17]), true);
+    g.fillStyle(0xb7c0c9);
+    g.fillPoints(pts([8, 8], [16, 6], [18, 11], [10, 12]), true);
+  });
+  bake(scene, 'p-shrub', 30, 24, 0.86, (g) => {
+    g.fillStyle(0x3f9e4d);
+    g.fillCircle(11, 14, 9);
+    g.fillCircle(20, 15, 8);
+    g.fillStyle(0x4fba5c);
+    g.fillCircle(14, 10, 7);
+  });
+  bake(scene, 'p-fence', 54, 26, 0.85, (g) => {
+    g.fillStyle(0xe8e2d4);
+    for (let i = 0; i < 4; i++) g.fillRect(4 + i * 14, 6, 4, 16);
+    g.fillStyle(0xd6cfbe);
+    g.fillRect(2, 10, 50, 3);
+    g.fillRect(2, 17, 50, 3);
+  });
+  bake(scene, 'p-streetlight', 26, 62, 0.94, (g) => {
+    g.fillStyle(0x6b7480);
+    g.fillRect(11, 12, 4, 46);
+    g.fillRect(11, 12, 12, 3);
+    g.fillStyle(0xfff3b0);
+    g.fillEllipse(21, 16, 10, 6);
+  });
+  bake(scene, 'p-trafficlight', 24, 58, 0.94, (g) => {
+    g.fillStyle(0x4a545f);
+    g.fillRect(10, 20, 4, 34);
+    g.fillStyle(0x2f3b4a);
+    g.fillRect(6, 4, 13, 22);
+    g.fillStyle(0xe4573d);
+    g.fillCircle(12, 9, 3);
+    g.fillStyle(0xf5d547);
+    g.fillCircle(12, 15, 3);
+    g.fillStyle(0x3fd07a);
+    g.fillCircle(12, 21, 3);
+  });
+  bake(scene, 'p-busstop', 54, 44, 0.88, (g) => {
+    g.fillStyle(0x4a545f);
+    g.fillRect(6, 12, 3, 28);
+    g.fillRect(44, 12, 3, 28);
+    g.fillStyle(0x8fd0ff, 0.7);
+    g.fillRect(8, 14, 37, 22);
+    g.fillStyle(0x35506b);
+    g.fillRect(4, 8, 46, 6);
+  });
+  bake(scene, 'p-billboard', 78, 66, 0.92, (g) => {
+    g.fillStyle(0x6b7480);
+    g.fillRect(20, 34, 5, 30);
+    g.fillRect(53, 34, 5, 30);
+    g.fillStyle(0xffffff);
+    g.fillRect(6, 4, 66, 34);
+    g.fillStyle(0x3b6ea8);
+    g.fillRect(10, 8, 58, 26);
+    g.fillStyle(0xffd166);
+    g.fillRect(16, 14, 26, 5);
+    g.fillRect(16, 23, 40, 5);
+  });
+  bake(scene, 'p-watertower', 70, 104, 0.93, (g) => {
+    g.fillStyle(0x6b7480);
+    for (const dx of [12, 34, 52]) g.fillRect(dx, 48, 5, 52);
+    g.fillStyle(0x8a939f);
+    g.fillRect(10, 66, 50, 4);
+    g.fillStyle(0xb7c0c9);
+    g.fillEllipse(35, 40, 62, 30);
+    g.fillStyle(0xd7dee4);
+    g.fillEllipse(35, 30, 62, 30);
+    g.fillStyle(0x3b6ea8);
+    g.fillRect(22, 26, 26, 6);
+  });
+  bake(scene, 'p-cone', 18, 22, 0.9, (g) => {
+    g.fillStyle(0xe4573d);
+    g.fillTriangle(9, 2, 16, 18, 2, 18);
+    g.fillStyle(0xffffff);
+    g.fillRect(4, 11, 10, 3);
+  });
+  bake(scene, 'p-scaffold', 76, 92, 0.92, (g) => {
+    g.lineStyle(3, 0xd7a13c);
+    for (const dx of [8, 36, 64]) g.lineBetween(dx, 20, dx, 88);
+    for (const dy of [30, 50, 70, 86]) g.lineBetween(8, dy, 64, dy);
+    g.fillStyle(0xbfc8d2, 0.5);
+    g.fillRect(10, 22, 54, 64);
+  });
+  bake(scene, 'p-garbage', 34, 26, 0.85, (g) => {
+    g.fillStyle(0x4a545f);
+    g.fillEllipse(17, 18, 30, 12);
+    g.fillStyle(0x6b7480);
+    g.fillRect(6, 8, 22, 12);
+    g.fillStyle(0x8a939f);
+    g.fillEllipse(17, 8, 24, 8);
+  });
+  bake(scene, 'p-foodtruck', 60, 40, 0.86, (g) => {
+    block(g, 4, 10, 52, 16, { top: 0xffe066, left: 0xc99a1f, right: 0xf0c33c });
+    g.fillStyle(0x2f3b4a);
+    g.fillRect(14, 16, 18, 8);
+    g.fillStyle(0xef5f8c);
+    g.fillRect(6, 6, 48, 5);
+  });
+  building(scene, 'p-tower-a', 62, 96, { top: 0x9fd6ff, left: 0x35608c, right: 0x5a92c4 }, (g, x, y) => {
+    windows(g, x, y, 62, 96, 4, 0xe8f6ff);
+  }, 8);
+  building(scene, 'p-tower-b', 58, 116, { top: 0xd8c7ff, left: 0x584a80, right: 0x8172b8 }, (g, x, y) => {
+    windows(g, x, y, 58, 116, 5, 0xf3ecff);
+  }, 8);
 }

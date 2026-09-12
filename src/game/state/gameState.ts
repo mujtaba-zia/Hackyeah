@@ -62,6 +62,49 @@ export interface SimClock {
   seed: number;
 }
 
+/** Presentation only layer: funny city consequences of engineering health. */
+export type CityEventSeverity = 'minor' | 'moderate' | 'major' | 'chaotic';
+export type HealthBand = 'critical' | 'unstable' | 'healthy' | 'thriving';
+
+export type CityEventId =
+  | 'tornado'
+  | 'ufo'
+  | 'bug-invasion'
+  | 'factory-fire'
+  | 'pr-protest'
+  | 'deployment-parade'
+  | 'blackout'
+  | 'traffic-jam'
+  | 'meteor'
+  | 'fireworks'
+  | 'rainbow'
+  | 'construction-boom'
+  | 'repair-crew';
+
+export interface ActiveCityEvent {
+  id: CityEventId;
+  name: string;
+  blurb: string;
+  severity: CityEventSeverity;
+  startedAtSim: number;
+  endsAtReal: number;
+  /** World point the event happens at, for View Event and the edge marker. */
+  focus: { x: number; y: number } | null;
+}
+
+export interface CityEventLogEntry {
+  key: string;
+  eventId: CityEventId;
+  name: string;
+  severity: CityEventSeverity;
+  simTime: number;
+}
+
+export interface CityEventsState {
+  active: ActiveCityEvent[];
+  history: CityEventLogEntry[];
+}
+
 export interface GameState {
   sim: SimClock;
   repositories: Repository[];
@@ -71,6 +114,15 @@ export interface GameState {
   activity: ActivityEntry[];
   cityHealth: number;
   followCamera: boolean;
+  cityEvents: CityEventsState;
+}
+
+/** Health bands drive both the UI wording and which events can fire. */
+export function healthBand(health: number): HealthBand {
+  if (health >= 85) return 'thriving';
+  if (health >= 65) return 'healthy';
+  if (health >= 40) return 'unstable';
+  return 'critical';
 }
 
 export const STAGES: readonly PipelineStage[] = ['build', 'test', 'security', 'package', 'deploy'];
@@ -126,6 +178,7 @@ export const SIM_MINUTES_PER_SECOND = 5;
 export const FAILURE_MEMORY_MINUTES = 180;
 
 const MAX_ACTIVITY = 8;
+const MAX_CITY_EVENT_HISTORY = 10;
 const MAX_HISTORY_PER_REPOSITORY = 5;
 const MAX_RUNS = 12;
 const STAGE_PROGRESS_SIM_MINUTES = 7;
@@ -152,16 +205,17 @@ export function prsForRepo(state: GameState, repoId: RepoId): PullRequest[] {
 }
 
 export function computeCityHealth(state: GameState): number {
-  // Base sits below 100 so a calm city still has headroom: shipping deploys and
-  // a green history are what push it to full marks.
-  let health = 88;
+  // Tuned so a well run city sits in the high 80s rather than pinned at 100.
+  // Headroom matters: without it every failure is invisible and the city event
+  // director only ever sees a thriving band, so disasters never appear.
+  let health = 78;
 
   // Only recent breakage should weigh on the city. Runs linger in `runs` for
   // the tooltips, so an aged failure must stop being punished or health would
   // ratchet down permanently.
   for (const run of state.runs) {
     if (run.status !== 'failed' || run.endedAtSim === null) continue;
-    if (state.sim.time - run.endedAtSim <= FAILURE_MEMORY_MINUTES) health -= 6;
+    if (state.sim.time - run.endedAtSim <= FAILURE_MEMORY_MINUTES) health -= 9;
   }
 
   for (const pr of state.pullRequests) {
@@ -174,7 +228,7 @@ export function computeCityHealth(state: GameState): number {
   for (const run of state.runs) {
     if (run.status !== 'success' || run.stage !== 'deploy' || run.endedAtSim === null) continue;
     const elapsedSinceDeploy = state.sim.time - run.endedAtSim;
-    if (elapsedSinceDeploy >= 0 && elapsedSinceDeploy <= 120) recentDeployBonus += 4;
+    if (elapsedSinceDeploy >= 0 && elapsedSinceDeploy <= 120) recentDeployBonus += 3;
   }
   health += Math.min(recentDeployBonus, 12);
 
@@ -189,7 +243,13 @@ export function computeCityHealth(state: GameState): number {
   for (let index = 0; index < historyCount; index += 1) {
     if (recentHistory[index].status === 'success') successfulRuns += 1;
   }
-  if (historyCount > 0 && successfulRuns * 2 >= historyCount) health += 6;
+  // A strong green streak is worth real credit, a mediocre one is not.
+  if (historyCount > 0) {
+    const rate = successfulRuns / historyCount;
+    if (rate >= 0.85) health += 8;
+    else if (rate >= 0.65) health += 4;
+    else if (rate < 0.5) health -= 6;
+  }
 
   return Math.min(100, Math.max(0, health));
 }
@@ -210,6 +270,7 @@ export function createInitialState(): GameState {
     activity: [],
     cityHealth: 0,
     followCamera: true,
+    cityEvents: { active: [], history: [] },
   };
 
   return { ...state, cityHealth: computeCityHealth(state) };
@@ -355,6 +416,8 @@ function activityFor(
     case 'SIM_RESET':
     case 'RUN_STAGE_ADVANCED':
     case 'SET_FOLLOW_CAMERA':
+    case 'CITY_EVENT_STARTED':
+    case 'CITY_EVENT_ENDED':
       return null;
     default: {
       const unhandledEvent: never = event;
@@ -399,6 +462,31 @@ function reduceEvent(state: GameState, event: GameEvent): GameState {
             : run
         )),
       };
+    case 'CITY_EVENT_STARTED':
+      return {
+        ...state,
+        cityEvents: {
+          active: [event.event, ...state.cityEvents.active.filter((a) => a.id !== event.event.id)],
+          history: [
+            {
+              key: `${event.event.id}-${state.sim.time}`,
+              eventId: event.event.id,
+              name: event.event.name,
+              severity: event.event.severity,
+              simTime: state.sim.time,
+            },
+            ...state.cityEvents.history,
+          ].slice(0, MAX_CITY_EVENT_HISTORY),
+        },
+      };
+    case 'CITY_EVENT_ENDED':
+      return {
+        ...state,
+        cityEvents: {
+          ...state.cityEvents,
+          active: state.cityEvents.active.filter((a) => a.id !== event.eventId),
+        },
+      };
     case 'SIM_SET_SPEED':
       return { ...state, sim: { ...state.sim, speed: event.speed } };
     case 'SIM_SET_RUNNING':
@@ -419,6 +507,8 @@ function reduceEvent(state: GameState, event: GameEvent): GameState {
           .slice(0, MAX_ACTIVITY)
           .map((entry) => ({ ...entry })),
         followCamera: state.followCamera,
+        // A fresh simulation starts a fresh city: no lingering disasters.
+        cityEvents: { active: [], history: [] },
       };
     case 'RUN_STARTED':
       return {

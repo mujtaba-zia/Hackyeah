@@ -1,5 +1,7 @@
 import type {
+  ActiveCityEvent,
   ActivityEntry,
+  CityEventId,
   PipelineRun,
   PipelineStage,
   PullRequest,
@@ -21,7 +23,9 @@ export type GameEvent =
   | { type: 'PR_CREATED'; pr: PullRequest }
   | { type: 'PR_STATUS_CHANGED'; prId: string; status: PrStatus }
   | { type: 'PR_MERGED'; prId: string }
-  | { type: 'SET_FOLLOW_CAMERA'; follow: boolean };
+  | { type: 'SET_FOLLOW_CAMERA'; follow: boolean }
+  | { type: 'CITY_EVENT_STARTED'; event: ActiveCityEvent }
+  | { type: 'CITY_EVENT_ENDED'; eventId: CityEventId };
 
 /** Whole world seed state, used for startup and simulation resets. */
 export interface SimSnapshot {
