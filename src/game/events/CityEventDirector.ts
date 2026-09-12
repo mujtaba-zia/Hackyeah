@@ -59,6 +59,8 @@ export class CityEventDirector {
   /** One global gate: the severity that fired decides how long the city rests. */
   private globalCooldownUntil = 0;
   private recent: CityEventId[] = [];
+  /** Monotonic occurrence counter, used for collision free event keys. */
+  private sequence = 0;
   /** Rolling health samples, newest last, used for the recovery signal. */
   private healthSamples: { at: number; health: number }[] = [];
   private offReset?: () => void;
@@ -180,8 +182,10 @@ export class CityEventDirector {
       RECENT_MEMORY,
     );
 
+    this.sequence += 1;
     const event: ActiveCityEvent = {
       id: definition.id,
+      key: `${definition.id}-${this.sequence}`,
       name: definition.name,
       blurb: definition.blurb,
       severity: definition.severity,

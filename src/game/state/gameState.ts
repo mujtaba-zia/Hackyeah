@@ -83,6 +83,8 @@ export type CityEventId =
 
 export interface ActiveCityEvent {
   id: CityEventId;
+  /** Unique per occurrence, so repeats never collide on a timestamp. */
+  key: string;
   name: string;
   blurb: string;
   severity: CityEventSeverity;
@@ -469,9 +471,7 @@ function reduceEvent(state: GameState, event: GameEvent): GameState {
           active: [event.event, ...state.cityEvents.active.filter((a) => a.id !== event.event.id)],
           history: [
             {
-              // sim.time is frozen between ticks and while paused, so the real
-              // time end stamp is what keeps forced repeats distinct.
-              key: `${event.event.id}-${event.event.endsAtReal}`,
+              key: event.event.key,
               eventId: event.event.id,
               name: event.event.name,
               severity: event.event.severity,
