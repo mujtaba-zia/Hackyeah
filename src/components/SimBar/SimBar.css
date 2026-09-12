@@ -118,3 +118,8 @@
     opacity: 0.35;
   }
 }
+
+.sim-bar__volume {
+  width: 64px;
+  accent-color: #3fa66b;
+}

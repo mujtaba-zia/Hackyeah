@@ -171,11 +171,15 @@ export class CityEventStage {
     const clampedX = Phaser.Math.Clamp(screenX, margin, camera.width - margin);
     const clampedY = Phaser.Math.Clamp(screenY, margin, camera.height - margin);
     const angle = Math.atan2(screenY - camera.height / 2, screenX - camera.width / 2);
-    // A scroll factor of zero still leaves the container scaled by zoom, so the
-    // position is divided back out to land on the real viewport edge.
+    // Scroll factor zero removes camera scroll but zoom still scales around the
+    // camera origin, so the inverse of that transform is applied here to land on
+    // the real viewport edge at any zoom level.
     this.marker
       .setVisible(true)
-      .setPosition(clampedX / camera.zoom, clampedY / camera.zoom)
+      .setPosition(
+        (clampedX - camera.centerX) / camera.zoom + camera.centerX,
+        (clampedY - camera.centerY) / camera.zoom + camera.centerY,
+      )
       .setScale(1 / camera.zoom);
     this.arrow?.setAngle(Phaser.Math.RadToDeg(angle) + 90);
   }

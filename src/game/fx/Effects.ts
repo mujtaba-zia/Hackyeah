@@ -266,6 +266,23 @@ export class Effects {
     return this.handle({ emitters: [emitter] });
   }
 
+  /** Contract required companion to wind(), same world wide spawn area. */
+  rain(): FxHandle {
+    const bounds = this.scene.cameras.main.getBounds();
+    const emitter = this.scene.add
+      .particles(0, 0, 'fx-drop', {
+        x: { min: bounds.left, max: bounds.right },
+        y: bounds.top,
+        speedY: { min: 420, max: 620 },
+        speedX: { min: -60, max: -20 },
+        alpha: 0.5,
+        lifespan: 1600,
+        frequency: 40,
+      })
+      .setDepth(2_000_001);
+    return this.handle({ emitters: [emitter] });
+  }
+
   shake(intensity = 0.006, durationMs = 400): void {
     this.scene.cameras.main.shake(durationMs, intensity);
   }

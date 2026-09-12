@@ -73,6 +73,17 @@ export function SimBar({ onToggleDebug, debugOpen }: Props) {
       >
         {muted ? 'Muted' : 'Sound'}
       </button>
+      {!muted && (
+        <input
+          className="sim-bar__volume"
+          type="range"
+          min={0}
+          max={100}
+          defaultValue={Math.round(sound.level * 100)}
+          aria-label="Volume"
+          onChange={(event) => sound.setVolume(Number(event.target.value) / 100)}
+        />
+      )}
       <button
         type="button"
         className="sim-bar__debug-toggle"

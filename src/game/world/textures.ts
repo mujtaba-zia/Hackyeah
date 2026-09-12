@@ -1016,6 +1016,15 @@ function createMilestone4Art(scene: Phaser.Scene): void {
     g.fillStyle(0x3fd07a);
     g.fillCircle(12, 21, 3);
   });
+  bake(scene, 'p-sign', 22, 48, 0.94, (g) => {
+    g.fillStyle(0x6b7480);
+    g.fillRect(9, 18, 4, 28);
+    g.fillStyle(0x3fa66b);
+    g.fillRect(2, 4, 18, 14);
+    g.fillStyle(0xffffff);
+    g.fillRect(5, 8, 12, 2);
+    g.fillRect(5, 12, 8, 2);
+  });
   bake(scene, 'p-busstop', 54, 44, 0.88, (g) => {
     g.fillStyle(0x4a545f);
     g.fillRect(6, 12, 3, 28);

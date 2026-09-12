@@ -233,7 +233,11 @@ export class CityScene extends Phaser.Scene {
    * pedestrian route or a pipeline leg.
    */
   private groundTexture(key: string, tx: number, ty: number, row: string, doors: Set<string>): string {
-    if (key === 't-grass') return (tx * 7 + ty * 3) % 5 === 0 ? 't-grass2' : key;
+    if (key === 't-grass') {
+      // A sparse, deterministic sprinkle of planted plots breaks up the green.
+      if ((tx * 13 + ty * 7) % 37 === 0) return 't-garden';
+      return (tx * 7 + ty * 3) % 5 === 0 ? 't-grass2' : key;
+    }
     if (key === 't-asphalt') return 't-parking';
     if (key !== 't-road') return key;
 
