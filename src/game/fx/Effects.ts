@@ -244,13 +244,17 @@ export class Effects {
     return this.handle({ objects: [ring], tweens: [pulse] });
   }
 
-  /** Citywide, deliberately sparse so it stays cheap. */
+  /**
+   * Citywide, deliberately sparse so it stays cheap. The spawn area covers the
+   * whole world rather than the viewport at creation time, so panning during a
+   * storm does not leave the wind behind.
+   */
   wind(): FxHandle {
-    const camera = this.scene.cameras.main;
+    const bounds = this.scene.cameras.main.getBounds();
     const emitter = this.scene.add
       .particles(0, 0, 'fx-dust', {
-        x: { min: camera.worldView.left - 200, max: camera.worldView.right + 200 },
-        y: { min: camera.worldView.top - 100, max: camera.worldView.bottom + 100 },
+        x: { min: bounds.left, max: bounds.right },
+        y: { min: bounds.top, max: bounds.bottom },
         speedX: { min: 220, max: 420 },
         speedY: { min: -20, max: 20 },
         scale: { start: 0.5, end: 0 },
@@ -259,23 +263,6 @@ export class Effects {
         frequency: 90,
       })
       .setDepth(2_000_000);
-    return this.handle({ emitters: [emitter] });
-  }
-
-  rain(): FxHandle {
-    const camera = this.scene.cameras.main;
-    const emitter = this.scene.add
-      .particles(0, 0, 'fx-drop', {
-        x: { min: camera.worldView.left - 100, max: camera.worldView.right + 100 },
-        y: camera.worldView.top - 60,
-        speedY: { min: 420, max: 620 },
-        speedX: { min: -60, max: -20 },
-        scale: { start: 1, end: 1 },
-        alpha: 0.5,
-        lifespan: 1600,
-        frequency: 40,
-      })
-      .setDepth(2_000_001);
     return this.handle({ emitters: [emitter] });
   }
 

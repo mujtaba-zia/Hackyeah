@@ -20,6 +20,12 @@ export interface EventStageContext {
   traffic: TrafficSystem;
   pedestrians: PedestrianSystem;
   buildings: Map<BuildingId, WorkBuilding>;
+  /**
+   * Request ambient damping while this event runs, or pass null to release it.
+   * The scene combines every request with the health driven level and applies
+   * the minimum, so overlapping events cannot fight over one global setter.
+   */
+  damp(key: string, level: number | null): void;
 }
 
 /**
@@ -48,12 +54,16 @@ export class TrackedController {
 
   protected track<T extends Phaser.GameObjects.GameObject>(object: T): T {
     this.objects.push(object);
+    if (this.objects.length > 48) this.objects = this.objects.filter((o) => o.scene !== undefined);
     return object;
   }
 
   protected tween(config: Phaser.Types.Tweens.TweenBuilderConfig): Phaser.Tweens.Tween {
     const tween = this.ctx.scene.tweens.add(config);
     this.tweens.push(tween);
+    // Long events reschedule tweens continuously; drop finished ones so the
+    // bookkeeping arrays cannot grow for the whole event duration.
+    if (this.tweens.length > 48) this.tweens = this.tweens.filter((t) => t.isPlaying());
     return tween;
   }
 

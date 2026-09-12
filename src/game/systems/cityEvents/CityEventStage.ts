@@ -47,6 +47,8 @@ export interface CityEventStageDeps {
   traffic: TrafficSystem;
   pedestrians: PedestrianSystem;
   buildings: Map<BuildingId, WorkBuilding>;
+  /** Scene owned ambient damping, combined with the health driven level. */
+  damp(key: string, level: number | null): void;
 }
 
 /**
@@ -61,6 +63,8 @@ export class CityEventStage {
   private readonly fx: Effects;
   private readonly deps: CityEventStageDeps;
   private readonly running = new Map<CityEventId, EventController>();
+  /** Focus points of live events, newest last, so the marker can retarget. */
+  private readonly focusOf = new Map<CityEventId, { x: number; y: number } | null>();
   private marker?: Phaser.GameObjects.Container;
   private markerTarget: { x: number; y: number } | null = null;
   private unsubscribes: (() => void)[] = [];
@@ -99,11 +103,13 @@ export class CityEventStage {
       traffic: this.deps.traffic,
       pedestrians: this.deps.pedestrians,
       buildings: this.deps.buildings,
+      damp: this.deps.damp,
     };
     const controller = factory();
     controller.start(ctx);
     this.running.set(event.id, controller);
-    this.markerTarget = event.focus;
+    this.focusOf.set(event.id, event.focus);
+    this.retargetMarker();
   }
 
   private finish(id: CityEventId) {
@@ -111,12 +117,23 @@ export class CityEventStage {
     if (!controller) return;
     controller.stop();
     this.running.delete(id);
-    if (this.running.size === 0) this.markerTarget = null;
+    this.focusOf.delete(id);
+    this.retargetMarker();
+  }
+
+  /** Point at the newest event that still has a location. */
+  private retargetMarker() {
+    let target: { x: number; y: number } | null = null;
+    for (const focus of this.focusOf.values()) {
+      if (focus) target = focus;
+    }
+    this.markerTarget = target;
   }
 
   private stopAll() {
     for (const controller of this.running.values()) controller.stop();
     this.running.clear();
+    this.focusOf.clear();
     this.fx.destroy();
     this.markerTarget = null;
   }
@@ -154,7 +171,12 @@ export class CityEventStage {
     const clampedX = Phaser.Math.Clamp(screenX, margin, camera.width - margin);
     const clampedY = Phaser.Math.Clamp(screenY, margin, camera.height - margin);
     const angle = Math.atan2(screenY - camera.height / 2, screenX - camera.width / 2);
-    this.marker.setVisible(true).setPosition(clampedX, clampedY);
+    // A scroll factor of zero still leaves the container scaled by zoom, so the
+    // position is divided back out to land on the real viewport edge.
+    this.marker
+      .setVisible(true)
+      .setPosition(clampedX / camera.zoom, clampedY / camera.zoom)
+      .setScale(1 / camera.zoom);
     this.arrow?.setAngle(Phaser.Math.RadToDeg(angle) + 90);
   }
 

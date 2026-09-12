@@ -32,14 +32,16 @@ export function EventBanner({ onViewEvent }: Props) {
   // Auto hide a few seconds in, while the event itself keeps running.
   useEffect(() => {
     if (!newest) return;
-    const key = `${newest.id}-${newest.startedAtSim}`;
+    // Keyed by the real time end stamp: sim time is frozen while paused, so a
+    // forced repeat would otherwise inherit the previous dismissal.
+    const key = `${newest.id}-${newest.endsAtReal}`;
     setDismissed(null);
     const timer = setTimeout(() => setDismissed(key), 6500);
     return () => clearTimeout(timer);
-  }, [newest?.id, newest?.startedAtSim]);
+  }, [newest?.id, newest?.endsAtReal]);
 
   if (!newest) return null;
-  if (dismissed === `${newest.id}-${newest.startedAtSim}`) return null;
+  if (dismissed === `${newest.id}-${newest.endsAtReal}`) return null;
 
   return (
     <div className={`banner banner--${newest.severity}`} role="status">

@@ -34,6 +34,8 @@ export class SimulationEngine {
 
   /** Builds the startup ecosystem and dispatches SIM_RESET before any clock tick. */
   start(): void {
+    // Allow a remount to revive the singleton instead of freezing the city.
+    this.destroyed = false;
     if (this.destroyed) return;
 
     if (!this.initialized) this.initialize();

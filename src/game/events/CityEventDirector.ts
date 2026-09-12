@@ -53,28 +53,34 @@ const EVENT_FOCUS: Partial<Record<CityEventId, string>> = {
  */
 export class CityEventDirector {
   private readonly rng: () => number;
-  private timer: ReturnType<typeof setInterval> | null = null;
+  private timer: ReturnType<typeof setInterval> | undefined;
   private readonly endTimers = new Map<CityEventId, ReturnType<typeof setTimeout>>();
   private readonly cooldownUntil = new Map<CityEventId, number>();
-  private readonly severityUntil = new Map<CityEventSeverity, number>();
+  /** One global gate: the severity that fired decides how long the city rests. */
+  private globalCooldownUntil = 0;
   private recent: CityEventId[] = [];
   /** Rolling health samples, newest last, used for the recovery signal. */
   private healthSamples: { at: number; health: number }[] = [];
+  private offReset?: () => void;
 
   constructor(seed = 1337) {
     this.rng = createRng(seed);
   }
 
   start(): void {
-    if (this.timer !== null) return;
+    if (this.timer !== undefined) return;
     this.timer = setInterval(() => this.evaluate(), EVALUATE_EVERY_MS);
+    // A fresh simulation deserves a fresh city: without this the cooldowns from
+    // the previous run, up to seven minutes for a chaotic event, would silence
+    // the reset city just when a presenter wants activity.
+    this.offReset = gameStore.bus.on('SIM_RESET', () => this.reset());
   }
 
   stop(): void {
-    if (this.timer !== null) {
-      clearInterval(this.timer);
-      this.timer = null;
-    }
+    clearInterval(this.timer);
+    this.timer = undefined;
+    this.offReset?.();
+    this.offReset = undefined;
   }
 
   reset(): void {
@@ -84,15 +90,15 @@ export class CityEventDirector {
     }
     this.endTimers.clear();
     this.cooldownUntil.clear();
-    this.severityUntil.clear();
+    this.globalCooldownUntil = 0;
     this.recent = [];
     this.healthSamples = [];
   }
 
   destroy(): void {
     this.stop();
-    for (const timer of this.endTimers.values()) clearTimeout(timer);
-    this.endTimers.clear();
+    // reset() ends active events so nothing is left running without an end timer.
+    this.reset();
   }
 
   /** Debug entry point. Same dispatch path as an automatic trigger. */
@@ -112,11 +118,11 @@ export class CityEventDirector {
     const now = Date.now();
 
     if (state.cityEvents.active.length >= MAX_ACTIVE_EVENTS) return;
+    if (this.globalCooldownUntil > now) return;
 
     const candidates: { definition: CityEventDefinition; weight: number }[] = [];
     for (const definition of CITY_EVENT_DEFINITIONS) {
       if ((this.cooldownUntil.get(definition.id) ?? 0) > now) continue;
-      if ((this.severityUntil.get(definition.severity) ?? 0) > now) continue;
       if (this.blockedByMajor(definition, ctx)) continue;
       if (!definition.canTrigger(ctx)) continue;
 
@@ -149,9 +155,18 @@ export class CityEventDirector {
 
   private makeRoomFor(definition: CityEventDefinition) {
     const heavy = definition.severity === 'major' || definition.severity === 'chaotic';
-    if (!heavy) return;
-    for (const active of gameStore.getState().cityEvents.active) {
-      if (active.severity === 'major' || active.severity === 'chaotic') this.end(active.id);
+    if (heavy) {
+      for (const active of gameStore.getState().cityEvents.active) {
+        if (active.severity === 'major' || active.severity === 'chaotic') this.end(active.id);
+      }
+    }
+    // Forcing must not exceed the active cap either, or the debug grid could
+    // stack thirteen simultaneous controllers.
+    let active = gameStore.getState().cityEvents.active.filter((a) => a.id !== definition.id);
+    while (active.length >= MAX_ACTIVE_EVENTS) {
+      const oldest = active[active.length - 1];
+      this.end(oldest.id);
+      active = active.slice(0, -1);
     }
   }
 
@@ -159,10 +174,7 @@ export class CityEventDirector {
     const now = Date.now();
     const [minCooldown, maxCooldown] = SEVERITY_COOLDOWN[definition.severity];
     this.cooldownUntil.set(definition.id, now + definition.cooldownMs);
-    this.severityUntil.set(
-      definition.severity,
-      now + minCooldown + this.rng() * (maxCooldown - minCooldown),
-    );
+    this.globalCooldownUntil = now + minCooldown + this.rng() * (maxCooldown - minCooldown);
     this.recent = [definition.id, ...this.recent.filter((id) => id !== definition.id)].slice(
       0,
       RECENT_MEMORY,
@@ -213,22 +225,15 @@ export class CityEventDirector {
 
   private buildContext(state: GameState): CityEventContext {
     const simTime = state.sim.time;
-    const recentFailures = state.runs.filter(
-      (run) =>
-        run.status === 'failed' &&
-        run.endedAtSim !== null &&
-        simTime - run.endedAtSim <= RECENT_WINDOW_SIM,
-    ).length;
-    const recentDeploys = state.runs.filter(
-      (run) =>
-        run.status === 'success' &&
-        run.endedAtSim !== null &&
-        simTime - run.endedAtSim <= RECENT_WINDOW_SIM,
-    ).length;
-
+    // `runs` is capped at 12 and evicts finished runs first, so completed
+    // outcomes can vanish while still inside the recent window. History keeps
+    // them, which is what these signals are defined to measure.
     const flatHistory = REPOSITORIES.flatMap((repo) => state.history[repo.id] ?? []).sort(
       (a, b) => b.endedAtSim - a.endedAtSim,
     );
+    const recent = flatHistory.filter((entry) => simTime - entry.endedAtSim <= RECENT_WINDOW_SIM);
+    const recentFailures = recent.filter((entry) => entry.status === 'failed').length;
+    const recentDeploys = recent.filter((entry) => entry.status === 'success').length;
     const window = flatHistory.slice(0, 20);
     const successes = window.filter((entry) => entry.status === 'success').length;
     let failureStreak = 0;

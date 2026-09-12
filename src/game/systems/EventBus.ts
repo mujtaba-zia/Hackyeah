@@ -34,8 +34,19 @@ export class EventBus {
   }
 
   emit(event: GameEvent): void {
-    for (const handler of this.all) handler(event);
+    // Handlers are isolated: the simulation tick, the scene and the audio layer
+    // all subscribe here, and one throwing listener must not abort the rest of
+    // the dispatch or unwind into the simulation timer.
+    for (const handler of this.all) this.safely(handler, event);
     const handlers = this.byType.get(event.type);
-    if (handlers) for (const handler of handlers) handler(event);
+    if (handlers) for (const handler of handlers) this.safely(handler, event);
+  }
+
+  private safely(handler: Handler, event: GameEvent) {
+    try {
+      handler(event);
+    } catch (error) {
+      console.error('Event handler failed', event.type, error);
+    }
   }
 }

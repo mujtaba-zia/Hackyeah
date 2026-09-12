@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { EMERGENCY_ROUTE, VEHICLE_ROUTES } from '../../world/cityLayout';
+import { EMERGENCY_ROUTE } from '../../world/cityLayout';
 import { tileToWorld } from '../../world/iso';
 import { TrackedController, type EventController, type EventStageContext } from './types';
 
@@ -36,13 +36,16 @@ export class TornadoController extends TrackedController implements EventControl
 
     // Shake whenever the funnel is near a landmark.
     this.later(2_000, () => this.shakeLoop());
-    ctx.traffic.setActivity(0.4);
-    ctx.pedestrians.setActivity(0.3);
+    ctx.damp('tornado', 0.4);
   }
 
   private debrisBurst(funnel: Phaser.GameObjects.Image) {
     if (!this.running) return;
+    // Held as well as timed: stop() cancels pending timers, so a burst that is
+    // still in flight when the tornado ends must be owned by the controller or
+    // its sprites and infinite tweens would outlive the event.
     const burst = this.ctx.fx.debris(funnel.x, funnel.y - 40, 60);
+    this.hold(burst);
     this.ctx.fx.dust(funnel.x, funnel.y);
     this.later(1_500, () => burst.destroy());
     this.later(1_800, () => this.debrisBurst(funnel));
@@ -55,8 +58,7 @@ export class TornadoController extends TrackedController implements EventControl
   }
 
   stop(): void {
-    this.ctx?.traffic.setActivity(1);
-    this.ctx?.pedestrians.setActivity(1);
+    this.ctx?.damp('tornado', null);
     super.stop();
   }
 }
@@ -266,11 +268,11 @@ export class BlackoutController extends TrackedController implements EventContro
       this.tween({ targets: crew, y: crew.y - 6, duration: 400, yoyo: true, repeat: -1 });
     });
 
-    ctx.traffic.setActivity(0.5);
+    ctx.damp('blackout', 0.5);
   }
 
   stop(): void {
-    this.ctx?.traffic.setActivity(1);
+    this.ctx?.damp('blackout', null);
     super.stop();
   }
 }
@@ -279,8 +281,9 @@ export class BlackoutController extends TrackedController implements EventContro
 export class TrafficJamController extends TrackedController implements EventController {
   start(ctx: EventStageContext): void {
     this.ctx = ctx;
-    const route = VEHICLE_ROUTES[0] ?? [];
-    const anchor = route.length > 2 ? tileToWorld(route[1]) : ctx.focus;
+    // The jam must appear where the banner and the edge marker point, otherwise
+    // View Event takes the presenter to an empty road.
+    const anchor = ctx.focus;
     const textures = ['a-car', 'a-car2', 'a-van', 'a-truck', 'a-bus'];
 
     for (let i = 0; i < 7; i++) {
@@ -312,11 +315,11 @@ export class TrafficJamController extends TrackedController implements EventCont
         this.tween({ targets: honk, alpha: { from: 1, to: 0.2 }, duration: 700, yoyo: true, repeat: -1 });
       }
     }
-    ctx.traffic.setActivity(0.45);
+    ctx.damp('traffic-jam', 0.45);
   }
 
   stop(): void {
-    this.ctx?.traffic.setActivity(1);
+    this.ctx?.damp('traffic-jam', null);
     super.stop();
   }
 }
