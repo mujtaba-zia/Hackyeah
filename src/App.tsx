@@ -15,7 +15,19 @@ import type { CityScene } from './game/scenes/CityScene';
 import type { HoverPayload } from './game/state/hover';
 import type { BuildingId } from './game/world/cityLayout';
 import { simulation } from './simulation/SimulationEngine';
+import type { CityEventId, CityEventSeverity } from './game/state/gameState';
+import type { SoundCue } from './audio/SoundManager';
 import './App.css';
+
+/** Trouble sounds like trouble: severity alone would celebrate a bug invasion. */
+const NEGATIVE_EVENTS: readonly CityEventId[] = ['bug-invasion', 'pr-protest', 'traffic-jam'];
+
+function cueFor(id: CityEventId, severity: CityEventSeverity): SoundCue {
+  if (id === 'ufo') return 'ufo';
+  if (id === 'tornado') return 'wind';
+  if (severity === 'major' || severity === 'chaotic') return 'alarm';
+  return NEGATIVE_EVENTS.includes(id) ? 'failure' : 'celebrate';
+}
 
 export default function App() {
   const [selected, setSelected] = useState<BuildingId | null>(null);
@@ -36,11 +48,7 @@ export default function App() {
     const offSuccess = gameStore.bus.on('RUN_SUCCEEDED', () => sound.play('success'));
     const offFailure = gameStore.bus.on('RUN_FAILED', () => sound.play('failure'));
     const offEvent = gameStore.bus.on('CITY_EVENT_STARTED', (event) => {
-      if (event.event.severity === 'major' || event.event.severity === 'chaotic') {
-        sound.play(event.event.id === 'ufo' ? 'ufo' : 'alarm');
-      } else {
-        sound.play('celebrate');
-      }
+      sound.play(cueFor(event.event.id, event.event.severity));
     });
 
     return () => {

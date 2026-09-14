@@ -52,14 +52,28 @@ class SoundManager {
 
   resume(): void {
     const context = this.ensureContext();
-    if (context && context.state === 'suspended') void context.resume();
+    if (context && context.state === 'suspended') {
+      context.resume().catch(() => {
+        // Audio simply stays silent if the browser refuses to resume.
+      });
+    }
   }
 
   play(cue: SoundCue): void {
     if (this.muted) return;
     const context = this.ensureContext();
-    if (!context) return;
+    // A suspended or closed context throws on node creation, and this runs from
+    // an event bus handler, so failures must never escape into the simulation.
+    if (!context || context.state !== 'running') return;
 
+    try {
+      this.emit(context, cue);
+    } catch {
+      // Ignore: a missed sound effect is never worth breaking the city for.
+    }
+  }
+
+  private emit(context: AudioContext, cue: SoundCue): void {
     const shape = CUES[cue];
     const now = context.currentTime;
     const seconds = shape.durationMs / 1000;
@@ -70,6 +84,7 @@ class SoundManager {
     gain.connect(context.destination);
 
     const voices = shape.detune === undefined ? [0] : [0, shape.detune];
+    let remaining = voices.length;
     for (const detune of voices) {
       const oscillator = context.createOscillator();
       oscillator.type = shape.type;
@@ -77,6 +92,12 @@ class SoundManager {
       oscillator.frequency.setValueAtTime(shape.from, now);
       oscillator.frequency.linearRampToValueAtTime(shape.to, now + seconds);
       oscillator.connect(gain);
+      // Tear the little graph down rather than leaving it to audio GC.
+      oscillator.onended = () => {
+        oscillator.disconnect();
+        remaining -= 1;
+        if (remaining === 0) gain.disconnect();
+      };
       oscillator.start(now);
       oscillator.stop(now + seconds + 0.02);
     }

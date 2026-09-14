@@ -11,6 +11,7 @@ import { PRCrowd } from '../systems/PRCrowd';
 import { CityEventStage } from '../systems/cityEvents/CityEventStage';
 import { TrafficSystem } from '../systems/TrafficSystem';
 import {
+  BUILDING_DOOR,
   CITY_CENTER,
   DISTRICTS,
   KEY_BUILDINGS,
@@ -80,6 +81,10 @@ export class CityScene extends Phaser.Scene {
   private onReady!: (scene: CityScene) => void;
   /** Last applied ambient level, so health changes do not restart tweens. */
   private ambientLevel = 1;
+  /** Health driven level, kept apart from temporary event requests. */
+  private healthLevel = 1;
+  private readonly eventDamping = new Map<string, number>();
+  private spectacleOff: (() => void)[] = [];
 
   constructor() {
     super(CityScene.KEY);
@@ -114,6 +119,7 @@ export class CityScene extends Phaser.Scene {
       traffic: this.traffic,
       pedestrians: this.pedestrians,
       buildings: this.buildings,
+      damp: (key, level) => this.requestDamping(key, level),
     });
     this.eventStage.attach();
 
@@ -137,6 +143,8 @@ export class CityScene extends Phaser.Scene {
     const unsubscribe = gameStore.subscribe((state) => this.applyState(state));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       unsubscribe();
+      for (const off of this.spectacleOff) off();
+      this.spectacleOff = [];
       this.eventStage.destroy();
       this.fleet.destroy();
       this.crowd.destroy();
@@ -148,22 +156,41 @@ export class CityScene extends Phaser.Scene {
     this.onReady(this);
   }
 
+  /** Ambient level is the quietest of the health level and any live event. */
+  private requestDamping(key: string, level: number | null) {
+    if (level === null) this.eventDamping.delete(key);
+    else this.eventDamping.set(key, level);
+    this.applyAmbient();
+  }
+
+  private applyAmbient() {
+    const level = Math.min(this.healthLevel, ...this.eventDamping.values());
+    if (level === this.ambientLevel) return;
+    this.ambientLevel = level;
+    this.traffic.setActivity(level);
+    this.pedestrians.setActivity(level);
+  }
+
   /** One-shot reactions to domain events, kept apart from the state sync. */
   private attachSpectacle() {
-    gameStore.bus.on('RUN_SUCCEEDED', (event) => {
-      const run = gameStore.getState().runs.find((candidate) => candidate.id === event.runId);
-      if (!run) return;
-      this.buildings.get(STAGE_SITE.deploy)?.burstConfetti();
-      this.factoryFor(run.repoId)?.flashSuccess();
-    });
-
-    gameStore.bus.on('RUN_FAILED', (event) => {
-      const run = gameStore.getState().runs.find((candidate) => candidate.id === event.runId);
-      this.buildings.get(STAGE_SITE[event.stage])?.flashFailure();
-      if (run) this.factoryFor(run.repoId)?.flashFailure();
-    });
-
-    gameStore.bus.on('SIM_RESET', () => this.fleet.reset());
+    this.spectacleOff.push(
+      gameStore.bus.on('RUN_SUCCEEDED', (event) => {
+        const run = gameStore.getState().runs.find((candidate) => candidate.id === event.runId);
+        if (!run) return;
+        this.buildings.get(STAGE_SITE.deploy)?.burstConfetti();
+        this.factoryFor(run.repoId)?.flashSuccess();
+      }),
+      gameStore.bus.on('RUN_FAILED', (event) => {
+        const run = gameStore.getState().runs.find((candidate) => candidate.id === event.runId);
+        this.buildings.get(STAGE_SITE[event.stage])?.flashFailure();
+        if (run) this.factoryFor(run.repoId)?.flashFailure();
+      }),
+      gameStore.bus.on('SIM_RESET', () => {
+        this.fleet.reset();
+        this.eventDamping.clear();
+        this.applyAmbient();
+      }),
+    );
   }
 
   private factoryFor(repoId: string): WorkBuilding | undefined {
@@ -187,14 +214,39 @@ export class CityScene extends Phaser.Scene {
   }
 
   private createTerrain() {
+    const doorTiles = new Set(
+      Object.values(BUILDING_DOOR).map((tile) => `${Math.round(tile.tx)},${Math.round(tile.ty)}`),
+    );
+
     TERRAIN.forEach((row, ty) => {
       [...row].forEach((code, tx) => {
         const { x, y } = tileToWorld({ tx, ty });
         const key = TERRAIN_TEXTURE[code] ?? 't-grass';
-        const texture = key === 't-grass' && (tx * 7 + ty * 3) % 5 === 0 ? 't-grass2' : key;
-        this.add.image(x, y, texture).setDepth(GROUND_DEPTH);
+        this.add.image(x, y, this.groundTexture(key, tx, ty, row, doorTiles)).setDepth(GROUND_DEPTH);
       });
     });
+  }
+
+  /**
+   * Road detail is chosen from the existing grid rather than authored into it,
+   * so lane markings and crossings cannot invalidate a vehicle route, a
+   * pedestrian route or a pipeline leg.
+   */
+  private groundTexture(key: string, tx: number, ty: number, row: string, doors: Set<string>): string {
+    if (key === 't-grass') {
+      // A sparse, deterministic sprinkle of planted plots breaks up the green.
+      if ((tx * 13 + ty * 7) % 37 === 0) return 't-garden';
+      return (tx * 7 + ty * 3) % 5 === 0 ? 't-grass2' : key;
+    }
+    if (key === 't-asphalt') return 't-parking';
+    if (key !== 't-road') return key;
+
+    // A crossing beside a landmark door, otherwise dashes on long straights.
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      if (doors.has(`${tx + dx},${ty + dy}`)) return 't-crosswalk';
+    }
+    const horizontal = row[tx - 1] === 'R' && row[tx + 1] === 'R';
+    return horizontal && (tx + ty) % 2 === 0 ? 't-roadline' : key;
   }
 
   private createProps() {
@@ -264,12 +316,8 @@ export class CityScene extends Phaser.Scene {
     this.crowd.sync(state);
 
     // City health quietly damps the streets rather than staging a disaster.
-    const level = state.cityHealth >= 80 ? 1 : state.cityHealth >= 50 ? 0.75 : 0.5;
-    if (level !== this.ambientLevel) {
-      this.ambientLevel = level;
-      this.traffic.setActivity(level);
-      this.pedestrians.setActivity(level);
-    }
+    this.healthLevel = state.cityHealth >= 80 ? 1 : state.cityHealth >= 50 ? 0.75 : 0.5;
+    this.applyAmbient();
   }
 
   resetCamera() {

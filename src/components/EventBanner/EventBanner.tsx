@@ -32,14 +32,15 @@ export function EventBanner({ onViewEvent }: Props) {
   // Auto hide a few seconds in, while the event itself keeps running.
   useEffect(() => {
     if (!newest) return;
-    const key = `${newest.id}-${newest.startedAtSim}`;
+    // Per occurrence key, so a forced repeat gets its own dismissal timer.
+    const key = newest.key;
     setDismissed(null);
     const timer = setTimeout(() => setDismissed(key), 6500);
     return () => clearTimeout(timer);
-  }, [newest?.id, newest?.startedAtSim]);
+  }, [newest?.key]);
 
   if (!newest) return null;
-  if (dismissed === `${newest.id}-${newest.startedAtSim}`) return null;
+  if (dismissed === newest.key) return null;
 
   return (
     <div className={`banner banner--${newest.severity}`} role="status">

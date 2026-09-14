@@ -712,6 +712,36 @@ export function createTextures(scene: Phaser.Scene): void {
  * to 3 art above stays untouched and easy to compare.
  */
 function createMilestone4Art(scene: Phaser.Scene): void {
+  // ---- road and ground detail ---------------------------------------------
+  tile(scene, 't-roadline', 0x9aa3ad, 0x8a929b, (g) => {
+    // Dashes run along the isometric road axis rather than the screen axis.
+    g.fillStyle(0xe8edf2, 0.9);
+    for (let i = -1; i <= 1; i++) {
+      g.fillEllipse(TILE_W / 2 + i * 16, TILE_H / 2 + i * 8, 9, 4);
+    }
+  });
+  tile(scene, 't-crosswalk', 0x9aa3ad, 0x8a929b, (g) => {
+    g.fillStyle(0xf2f6fa, 0.92);
+    for (let i = -2; i <= 2; i++) {
+      g.fillEllipse(TILE_W / 2 + i * 11, TILE_H / 2 - i * 5, 7, 13);
+    }
+  });
+  tile(scene, 't-parking', 0x8d949c, 0x7d848b, (g) => {
+    g.lineStyle(2, 0xe8edf2, 0.7);
+    g.lineBetween(14, 12, 34, 22);
+    g.lineBetween(30, 6, 50, 16);
+  });
+  tile(scene, 't-garden', 0x6fbe4a, 0x5da33d, (g) => {
+    g.fillStyle(0x8a5a3b, 0.65);
+    g.fillEllipse(TILE_W / 2, TILE_H / 2, 34, 16);
+    g.fillStyle(0xff6b8b);
+    g.fillCircle(26, 15, 2.4);
+    g.fillStyle(0xffe066);
+    g.fillCircle(36, 18, 2.4);
+    g.fillStyle(0xffffff);
+    g.fillCircle(31, 12, 2.2);
+  });
+
   // ---- effect art used by the Effects library ------------------------------
   bake(scene, 'fx-fire', 26, 34, 0.9, (g) => {
     g.fillStyle(0xff6b2c);
@@ -985,6 +1015,15 @@ function createMilestone4Art(scene: Phaser.Scene): void {
     g.fillCircle(12, 15, 3);
     g.fillStyle(0x3fd07a);
     g.fillCircle(12, 21, 3);
+  });
+  bake(scene, 'p-sign', 22, 48, 0.94, (g) => {
+    g.fillStyle(0x6b7480);
+    g.fillRect(9, 18, 4, 28);
+    g.fillStyle(0x3fa66b);
+    g.fillRect(2, 4, 18, 14);
+    g.fillStyle(0xffffff);
+    g.fillRect(5, 8, 12, 2);
+    g.fillRect(5, 12, 8, 2);
   });
   bake(scene, 'p-busstop', 54, 44, 0.88, (g) => {
     g.fillStyle(0x4a545f);

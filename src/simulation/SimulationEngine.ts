@@ -13,7 +13,7 @@ type Dispatch = (event: GameEvent) => void;
 /** Owns deterministic simulation state and sends its domain events through the store. */
 export class SimulationEngine {
   private readonly dispatch: Dispatch;
-  private readonly clock: SimulationClock;
+  private clock: SimulationClock;
   private seed: number;
   private speed: SimulationSpeed = 1;
   private simTime = 0;
@@ -34,7 +34,15 @@ export class SimulationEngine {
 
   /** Builds the startup ecosystem and dispatches SIM_RESET before any clock tick. */
   start(): void {
-    if (this.destroyed) return;
+    // A remount must revive the singleton rather than freeze the city. The
+    // clock's destroyed flag is terminal, so a new one is built here instead of
+    // merely clearing the engine flag.
+    if (this.destroyed) {
+      this.clock = new SimulationClock(this.handleClockTick);
+      this.clock.setSpeed(this.speed);
+      this.destroyed = false;
+      this.initialized = false;
+    }
 
     if (!this.initialized) this.initialize();
     if (this.runningRequested) this.startClock();

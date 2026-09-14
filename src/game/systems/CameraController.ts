@@ -20,6 +20,8 @@ export class CameraController {
   private dragOrigin = new Phaser.Math.Vector2();
   private cameraOrigin = new Phaser.Math.Vector2();
   private following = false;
+  /** Only one scripted camera move may run, otherwise they fight each other. */
+  private viewTween?: Phaser.Tweens.Tween;
 
   constructor(scene: Phaser.Scene, home: { x: number; y: number; zoom: number }) {
     this.scene = scene;
@@ -91,8 +93,9 @@ export class CameraController {
   /** Smoothly centres on a world point, used when a pipeline stage begins. */
   focusOn(x: number, y: number, zoom = 1.05): void {
     this.stopFollow();
+    this.viewTween?.stop();
     const view = { x: this.camera.midPoint.x, y: this.camera.midPoint.y, zoom: this.camera.zoom };
-    this.scene.tweens.add({
+    this.viewTween = this.scene.tweens.add({
       targets: view,
       x,
       y,
@@ -144,8 +147,9 @@ export class CameraController {
     }
     // Interpolate the camera's mid-point: `centerOn` is the only framing maths
     // used anywhere, so animated and instant resets cannot drift apart.
+    this.viewTween?.stop();
     const view = { x: this.camera.midPoint.x, y: this.camera.midPoint.y, zoom: this.camera.zoom };
-    this.scene.tweens.add({
+    this.viewTween = this.scene.tweens.add({
       targets: view,
       x: this.home.x,
       y: this.home.y,

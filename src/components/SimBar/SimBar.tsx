@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { sound } from '../../audio/SoundManager';
 import { simulation } from '../../simulation/SimulationEngine';
 import { useGameState } from '../../hooks/useGameState';
 import './SimBar.css';
@@ -23,6 +25,9 @@ function formatClock(time: number): string {
 /** Compact controls keep simulation status visible without competing with the city. */
 export function SimBar({ onToggleDebug, debugOpen }: Props) {
   const { sim } = useGameState();
+  // Audio starts muted because browsers block autoplay, so the only way to ever
+  // hear the city is a control on the normal observation surface.
+  const [muted, setMuted] = useState(sound.isMuted);
 
   return (
     <section className="sim-bar panel" aria-label="Simulation controls">
@@ -56,6 +61,29 @@ export function SimBar({ onToggleDebug, debugOpen }: Props) {
       >
         {sim.running ? 'Pause' : 'Resume'}
       </button>
+      <button
+        type="button"
+        className="sim-bar__speed"
+        aria-pressed={!muted}
+        title={muted ? 'Unmute city sounds' : 'Mute city sounds'}
+        onClick={() => {
+          sound.setMuted(!sound.isMuted);
+          setMuted(sound.isMuted);
+        }}
+      >
+        {muted ? 'Muted' : 'Sound'}
+      </button>
+      {!muted && (
+        <input
+          className="sim-bar__volume"
+          type="range"
+          min={0}
+          max={100}
+          defaultValue={Math.round(sound.level * 100)}
+          aria-label="Volume"
+          onChange={(event) => sound.setVolume(Number(event.target.value) / 100)}
+        />
+      )}
       <button
         type="button"
         className="sim-bar__debug-toggle"

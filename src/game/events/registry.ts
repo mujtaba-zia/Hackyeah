@@ -36,7 +36,11 @@ export const CITY_EVENT_DEFINITIONS: readonly CityEventDefinition[] = [
     severity: 'major',
     durationMs: 24_000,
     cooldownMs: 120_000,
-    canTrigger: (ctx) => ctx.failureStreak >= 2 || (ctx.band !== 'thriving' && ctx.recentFailures >= 2),
+    // Disasters stay gated behind an unhealthy city, even when an old streak
+    // lingers in history after health has already recovered.
+    canTrigger: (ctx) =>
+      (ctx.band === 'unstable' || ctx.band === 'critical') &&
+      (ctx.failureStreak >= 2 || ctx.recentFailures >= 2),
     weight: (ctx) => 4 + ctx.failureStreak * 4,
   },
   {
@@ -76,7 +80,7 @@ export const CITY_EVENT_DEFINITIONS: readonly CityEventDefinition[] = [
     severity: 'chaotic',
     durationMs: 24_000,
     cooldownMs: 300_000,
-    canTrigger: (ctx) => ctx.band === 'critical' || (ctx.oldPrs >= 4 && ctx.band !== 'thriving'),
+    canTrigger: (ctx) => ctx.band === 'critical' || (ctx.oldPrs >= 4 && ctx.band === 'unstable'),
     weight: (ctx) => 3 + (ctx.oldPrs >= 5 ? 2 : 0),
   },
   {
@@ -106,7 +110,8 @@ export const CITY_EVENT_DEFINITIONS: readonly CityEventDefinition[] = [
     severity: 'minor',
     durationMs: 14_000,
     cooldownMs: 70_000,
-    canTrigger: (ctx) => ctx.band === 'thriving' || ctx.recentDeploys >= 4,
+    canTrigger: (ctx) =>
+      ctx.band === 'thriving' || (ctx.band === 'healthy' && ctx.recentDeploys >= 4),
     weight: (ctx) => 6 + (ctx.health >= 95 ? 4 : 0),
   },
   {

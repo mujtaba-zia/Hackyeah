@@ -1,8 +1,6 @@
-import { useState } from 'react';
 import { gameStore } from '../../game/state/gameStore';
 import { cityEvents } from '../../game/events/CityEventDirector';
 import type { CityEventId } from '../../game/state/gameState';
-import { sound } from '../../audio/SoundManager';
 import { simulation } from '../../simulation/SimulationEngine';
 import { useGameState } from '../../hooks/useGameState';
 import './DebugPanel.css';
@@ -32,7 +30,6 @@ interface Props {
 /** Developer-only simulation hooks stay out of the normal observation surface. */
 export function DebugPanel({ onResetCamera }: Props) {
   const { followCamera, sim } = useGameState();
-  const [soundOn, setSoundOn] = useState(!sound.isMuted);
 
   return (
     <section className="debug-panel panel" aria-labelledby="debug-panel-title">
@@ -115,28 +112,7 @@ export function DebugPanel({ onResetCamera }: Props) {
         ))}
       </div>
 
-      <div className="debug-panel__speed-row">
-        <span className="debug-panel__label">Sound</span>
-        <button
-          type="button"
-          className="debug-panel__speed"
-          onClick={() => {
-            sound.setMuted(!sound.isMuted);
-            setSoundOn(!sound.isMuted);
-          }}
-        >
-          {soundOn ? 'On' : 'Muted'}
-        </button>
-        <input
-          className="debug-panel__volume"
-          type="range"
-          min={0}
-          max={100}
-          defaultValue={Math.round(sound.level * 100)}
-          aria-label="Volume"
-          onChange={(e) => sound.setVolume(Number(e.target.value) / 100)}
-        />
-      </div>
+
     </section>
   );
 }
