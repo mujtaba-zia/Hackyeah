@@ -5,11 +5,22 @@ import type { Vec3 } from '../../domain/ids';
 import { EventVisuals } from './visuals';
 import { TrackedController, type EventController, type EventStageContext } from './types';
 
-/** One shared mesh factory: every controller borrows it, none owns it. */
-const visuals = new EventVisuals();
+/**
+ * One shared mesh factory: every controller borrows it, none owns it.
+ *
+ * Rebuilt lazily after disposal, because a remount creates a second world and
+ * would otherwise inherit disposed geometry from the first.
+ */
+let sharedVisuals: EventVisuals | null = null;
+
+function visualsFor(): EventVisuals {
+  if (!sharedVisuals) sharedVisuals = new EventVisuals();
+  return sharedVisuals;
+}
 
 export function disposeEventVisuals(): void {
-  visuals.dispose();
+  sharedVisuals?.dispose();
+  sharedVisuals = null;
 }
 
 const above = (point: Vec3, height: number): Vec3 => ({ x: point.x, y: point.y + height, z: point.z });
@@ -20,7 +31,7 @@ class TornadoController extends TrackedController implements EventController {
     this.ctx = ctx;
     // Solid grey and large: a translucent dust cone was invisible against the
     // pale skyline at the default camera distance.
-    const funnel = this.track(visuals.tornado(fxMaterials.debris));
+    const funnel = this.track(visualsFor().tornado(fxMaterials.debris));
     funnel.scale.set(15, 52, 15);
     funnel.position.set(ctx.focus.x - 55, ctx.focus.y + 26, ctx.focus.z - 38);
     ctx.scene.add(funnel);
@@ -69,7 +80,7 @@ class TornadoController extends TrackedController implements EventController {
 class UfoController extends TrackedController implements EventController {
   start(ctx: EventStageContext): void {
     this.ctx = ctx;
-    const saucer = this.track(visuals.ufo());
+    const saucer = this.track(visualsFor().ufo());
     const start = { x: ctx.focus.x - 160, y: ctx.focus.y + 52, z: ctx.focus.z - 40 };
     saucer.position.set(start.x, start.y, start.z);
     ctx.scene.add(saucer);
@@ -93,7 +104,7 @@ class UfoController extends TrackedController implements EventController {
     this.hold(ctx.fx.beam({ x: saucer.position.x, y: saucer.position.y - 4, z: saucer.position.z }, ground));
 
     // A throwaway stand in, so no real pull request is ever touched.
-    const decoy = this.track(visuals.person(characterMaterials.angry));
+    const decoy = this.track(visualsFor().person(characterMaterials.angry));
     decoy.position.set(ground.x, ground.y, ground.z);
     ctx.scene.add(decoy);
 
@@ -111,7 +122,7 @@ class UfoController extends TrackedController implements EventController {
 class MeteorController extends TrackedController implements EventController {
   start(ctx: EventStageContext): void {
     this.ctx = ctx;
-    const rock = this.track(visuals.meteor());
+    const rock = this.track(visualsFor().meteor());
     rock.scale.setScalar(3.4);
     const from = { x: ctx.focus.x - 120, y: ctx.focus.y + 190, z: ctx.focus.z - 90 };
     rock.position.set(from.x, from.y, from.z);
@@ -137,12 +148,12 @@ class MeteorController extends TrackedController implements EventController {
     ctx.fx.explosion(above(ctx.focus, 1));
     ctx.fx.flash(0xffd9a0, 220);
 
-    const crater = this.track(visuals.crater());
+    const crater = this.track(visualsFor().crater());
     crater.position.set(ctx.focus.x, ctx.focus.y + 0.1, ctx.focus.z);
     ctx.scene.add(crater);
 
     this.later(1_400, () => {
-      const crew = this.track(visuals.person(characterMaterials.infra));
+      const crew = this.track(visualsFor().person(characterMaterials.infra));
       crew.position.set(ctx.focus.x + 6, ctx.focus.y, ctx.focus.z + 4);
       ctx.scene.add(crew);
       this.frame((_dt, elapsed) => {
@@ -161,7 +172,7 @@ class FactoryFireController extends TrackedController implements EventController
     this.hold(ctx.fx.warningPulse(above(ctx.focus, 0.4)));
 
     for (let i = 0; i < 3; i++) {
-      const worker = this.track(visuals.person(characterMaterials.annoyed));
+      const worker = this.track(visualsFor().person(characterMaterials.annoyed));
       worker.position.set(ctx.focus.x, ctx.focus.y, ctx.focus.z);
       ctx.scene.add(worker);
       const angle = (i / 3) * Math.PI * 2;
@@ -172,7 +183,7 @@ class FactoryFireController extends TrackedController implements EventController
     }
 
     this.later(2_500, () => {
-      const truck = this.track(visuals.fireTruck());
+      const truck = this.track(visualsFor().fireTruck());
       truck.position.set(ctx.focus.x - 60, ctx.focus.y, ctx.focus.z - 30);
       ctx.scene.add(truck);
       this.frame((dt) => {
@@ -209,7 +220,7 @@ class BlackoutController extends TrackedController implements EventController {
     }
 
     this.later(13_000, () => {
-      const crew = this.track(visuals.person(characterMaterials.infra));
+      const crew = this.track(visualsFor().person(characterMaterials.infra));
       crew.position.set(ctx.focus.x + 4, ctx.focus.y, ctx.focus.z + 4);
       ctx.scene.add(crew);
       ctx.fx.sparks(above(ctx.focus, 3), 0xffd166, 14);
@@ -232,7 +243,7 @@ class TrafficJamController extends TrackedController implements EventController 
     const palette = [vehicleMaterials.blue, vehicleMaterials.yellow, vehicleMaterials.orange, vehicleMaterials.red];
 
     for (let i = 0; i < 8; i++) {
-      const car = this.track(visuals.car(palette[i % palette.length]));
+      const car = this.track(visualsFor().car(palette[i % palette.length]));
       car.position.set(ctx.focus.x + 6 + i * 5.5, ctx.focus.y, ctx.focus.z + 4);
       ctx.scene.add(car);
       this.frame((_dt, elapsed) => {
@@ -252,7 +263,7 @@ class BugInvasionController extends TrackedController implements EventController
   start(ctx: EventStageContext): void {
     this.ctx = ctx;
     for (let i = 0; i < 10; i++) {
-      const bug = this.track(visuals.bug());
+      const bug = this.track(visualsFor().bug());
       const angle = (i / 10) * Math.PI * 2;
       bug.position.set(ctx.focus.x + Math.cos(angle) * 14, ctx.focus.y, ctx.focus.z + Math.sin(angle) * 14);
       ctx.scene.add(bug);
@@ -268,7 +279,7 @@ class BugInvasionController extends TrackedController implements EventController
     }
 
     for (let i = 0; i < 2; i++) {
-      const chaser = this.track(visuals.person(characterMaterials.watching));
+      const chaser = this.track(visualsFor().person(characterMaterials.watching));
       chaser.position.set(ctx.focus.x + (i === 0 ? -18 : 18), ctx.focus.y, ctx.focus.z);
       ctx.scene.add(chaser);
       this.frame((_dt, elapsed) => {
@@ -286,11 +297,11 @@ class PrProtestController extends TrackedController implements EventController {
     const boards = [characterMaterials.angry, characterMaterials.annoyed, characterMaterials.watching];
 
     REVIEW_WAITING_SPOTS.slice(0, 8).forEach((spot, i) => {
-      const placard = this.track(visuals.placard(boards[i % boards.length]));
+      const placard = this.track(visualsFor().placard(boards[i % boards.length]));
       placard.position.set(spot.x, spot.y, spot.z);
       ctx.scene.add(placard);
 
-      const protester = this.track(visuals.person(characterMaterials.annoyed));
+      const protester = this.track(visualsFor().person(characterMaterials.annoyed));
       protester.position.set(spot.x + 1.4, spot.y, spot.z + 0.6);
       ctx.scene.add(protester);
 
@@ -309,7 +320,7 @@ class ParadeController extends TrackedController implements EventController {
     const route = PIPELINE_LEGS[PIPELINE_LEGS.length - 1] ?? [];
     if (route.length < 2) return;
 
-    const float = this.track(visuals.paradeFloat());
+    const float = this.track(visualsFor().paradeFloat());
     float.position.set(route[0].x, route[0].y, route[0].z);
     ctx.scene.add(float);
 
@@ -374,7 +385,7 @@ class RainbowController extends TrackedController implements EventController {
       characterMaterials.calm,
       characterMaterials.b3d,
     ];
-    const arc = this.track(visuals.rainbow(bands));
+    const arc = this.track(visualsFor().rainbow(bands));
     arc.position.set(centre.x, centre.y + 4, centre.z - 40);
     arc.scale.setScalar(70);
     ctx.scene.add(arc);
@@ -390,14 +401,14 @@ class RepairCrewController extends TrackedController implements EventController 
   start(ctx: EventStageContext): void {
     this.ctx = ctx;
     for (let i = 0; i < 3; i++) {
-      const crew = this.track(visuals.person(characterMaterials.infra));
+      const crew = this.track(visualsFor().person(characterMaterials.infra));
       crew.position.set(ctx.focus.x - 8 + i * 6, ctx.focus.y, ctx.focus.z + 9);
       ctx.scene.add(crew);
       this.frame((_dt, elapsed) => {
         crew.position.y = ctx.focus.y + Math.abs(Math.sin(elapsed * 5 + i)) * 0.35;
       });
 
-      const cone = this.track(visuals.trafficCone());
+      const cone = this.track(visualsFor().trafficCone());
       cone.position.set(ctx.focus.x - 10 + i * 6, ctx.focus.y, ctx.focus.z + 11);
       ctx.scene.add(cone);
     }
@@ -415,7 +426,7 @@ class RepairCrewController extends TrackedController implements EventController 
 class ConstructionController extends TrackedController implements EventController {
   start(ctx: EventStageContext): void {
     this.ctx = ctx;
-    const scaffold = this.track(visuals.scaffold());
+    const scaffold = this.track(visualsFor().scaffold());
     scaffold.position.set(ctx.focus.x + 16, ctx.focus.y, ctx.focus.z + 12);
     scaffold.scale.set(6, 1, 6);
     ctx.scene.add(scaffold);
@@ -426,7 +437,7 @@ class ConstructionController extends TrackedController implements EventControlle
       scaffold.scale.y = 1 + grown * 11;
     });
 
-    const builder = this.track(visuals.person(characterMaterials.data));
+    const builder = this.track(visualsFor().person(characterMaterials.data));
     builder.position.set(ctx.focus.x + 11, ctx.focus.y, ctx.focus.z + 12);
     ctx.scene.add(builder);
     this.frame((_dt, elapsed) => {
