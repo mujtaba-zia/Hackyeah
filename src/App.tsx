@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { GameCanvas } from './components/GameCanvas/GameCanvas';
+import { CityCanvas } from './components/CityCanvas/CityCanvas';
 import { HUD } from './components/HUD/HUD';
 import { SimBar } from './components/SimBar/SimBar';
 import { ActivityFeed } from './components/ActivityFeed/ActivityFeed';
@@ -11,9 +11,9 @@ import { BuildingPanel } from './components/BuildingPanel/BuildingPanel';
 import { sound } from './audio/SoundManager';
 import { cityEvents } from './game/events/CityEventDirector';
 import { gameStore } from './game/state/gameStore';
-import type { CityScene } from './game/scenes/CityScene';
+import type { CityWorld } from './three/CityWorld';
 import type { HoverPayload } from './game/state/hover';
-import type { BuildingId } from './game/world/cityLayout';
+import type { BuildingId } from './domain/ids';
 import { simulation } from './simulation/SimulationEngine';
 import type { CityEventId, CityEventSeverity } from './game/state/gameState';
 import type { SoundCue } from './audio/SoundManager';
@@ -33,10 +33,10 @@ export default function App() {
   const [selected, setSelected] = useState<BuildingId | null>(null);
   const [hover, setHover] = useState<HoverPayload | null>(null);
   const [debugOpen, setDebugOpen] = useState(false);
-  const sceneRef = useRef<CityScene | null>(null);
+  const worldRef = useRef<CityWorld | null>(null);
 
-  const handleSceneReady = useCallback((scene: CityScene | null) => {
-    sceneRef.current = scene;
+  const handleWorldReady = useCallback((world: CityWorld | null) => {
+    worldRef.current = world;
   }, []);
 
   // The organization runs itself, and the city reacts to it. No button needed.
@@ -62,13 +62,13 @@ export default function App() {
 
   return (
     <div className="app">
-      <GameCanvas onSelectionChange={setSelected} onHover={setHover} onSceneReady={handleSceneReady} />
+      <CityCanvas onSelectionChange={setSelected} onHover={setHover} onWorldReady={handleWorldReady} />
 
-      <EventBanner onViewEvent={(focus) => sceneRef.current?.focusOnPoint(focus.x, focus.y)} />
+      <EventBanner onViewEvent={(focus) => worldRef.current?.focusOnPoint(focus)} />
 
       <div className="app__left">
         <SimBar onToggleDebug={() => setDebugOpen((open) => !open)} debugOpen={debugOpen} />
-        {debugOpen && <DebugPanel onResetCamera={() => sceneRef.current?.resetCamera()} />}
+        {debugOpen && <DebugPanel onResetCamera={() => worldRef.current?.resetCamera()} />}
       </div>
 
       <div className="app__right">
@@ -80,7 +80,7 @@ export default function App() {
 
       <Tooltip payload={hover} />
 
-      <footer className="app__hint">Hover a factory or a pull request · Drag to pan · Scroll to zoom</footer>
+      <footer className="app__hint">Hover a factory or a pull request · Drag to orbit · Shift drag to pan · Scroll to zoom</footer>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { createRng } from '../../simulation/MockData';
 import { gameStore } from '../state/gameStore';
+import type { BuildingId, Vec3 } from '../../domain/ids';
 import {
   healthBand,
   prAgeHours,
@@ -9,8 +10,7 @@ import {
   type CityEventSeverity,
   type GameState,
 } from '../state/gameState';
-import { BUILDING_DOOR, CITY_CENTER, KEY_BUILDINGS } from '../world/cityLayout';
-import { tileToWorld } from '../world/iso';
+import { CITIES, LANDMARKS } from '../../three/world/cityPlan';
 import { CITY_EVENT_DEFINITIONS } from './registry';
 import type { CityEventContext, CityEventDefinition } from './types';
 
@@ -31,16 +31,17 @@ const SEVERITY_COOLDOWN: Record<CityEventSeverity, [number, number]> = {
 /** Simulated minutes counted as "recent" for failures and deploys. */
 const RECENT_WINDOW_SIM = 240;
 
-/** Where each event should be watched from. */
-const EVENT_FOCUS: Partial<Record<CityEventId, string>> = {
-  'pr-protest': 'review-hall',
-  'deployment-parade': 'deployment-port',
-  fireworks: 'deployment-port',
-  'bug-invasion': 'test-lab',
-  'factory-fire': 'build-factory',
-  'traffic-jam': 'packaging-station',
-  'construction-boom': 'frontend-factory',
-  'repair-crew': 'infra-factory',
+/** Which landmark each event should be watched from. */
+const EVENT_FOCUS: Partial<Record<CityEventId, BuildingId>> = {
+  'pr-protest': 'geo-review',
+  'deployment-parade': 'geo-port',
+  fireworks: 'geo-port',
+  'bug-invasion': 'geo-test',
+  'factory-fire': 'geo-build',
+  'traffic-jam': 'geo-package',
+  // The small city is where the new construction happens.
+  'construction-boom': 'b3d-build',
+  'repair-crew': 'geo-security',
 };
 
 /**
@@ -208,15 +209,16 @@ export class CityEventDirector {
     gameStore.dispatch({ type: 'CITY_EVENT_ENDED', eventId: id });
   }
 
-  private focusFor(id: CityEventId): { x: number; y: number } | null {
+  private focusFor(id: CityEventId): Vec3 | null {
     const buildingId = EVENT_FOCUS[id];
     if (buildingId) {
-      const def = KEY_BUILDINGS.find((candidate) => candidate.id === buildingId);
-      if (def) return tileToWorld(def.tile);
-      const door = BUILDING_DOOR[buildingId as keyof typeof BUILDING_DOOR];
-      if (door) return tileToWorld(door);
+      const def = LANDMARKS.find((candidate) => candidate.id === buildingId);
+      if (def) return def.position;
     }
-    if (id === 'tornado' || id === 'meteor' || id === 'ufo') return tileToWorld(CITY_CENTER);
+    // Citywide spectacles are framed on Geo, the big city.
+    if (id === 'tornado' || id === 'meteor' || id === 'ufo') {
+      return CITIES.find((city) => city.id === 'geo')?.center ?? null;
+    }
     return null;
   }
 

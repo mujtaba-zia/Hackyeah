@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useGameState } from '../../hooks/useGameState';
 import type { ActiveCityEvent } from '../../game/state/gameState';
+import type { Vec3 } from '../../domain/ids';
 import './EventBanner.css';
 
 const ICON: Record<string, string> = {
@@ -20,7 +21,7 @@ const ICON: Record<string, string> = {
 };
 
 interface Props {
-  onViewEvent: (focus: { x: number; y: number }) => void;
+  onViewEvent: (focus: Vec3) => void;
 }
 
 /** Transient headline for the newest city event. Never blocks the city view. */

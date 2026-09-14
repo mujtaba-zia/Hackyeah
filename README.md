@@ -2,6 +2,10 @@
 
 A 2.5D web prototype that visualizes software engineering activity as a living city.
 
+The world is now real 3D, rendered with three.js. Two cities share it: **Geo**, the large
+monolith with the full pipeline, and **b3d**, a smaller city across the water with its own
+build and test sites, joined by a bridge.
+
 A mock engineering organization runs itself: six repositories start pipelines, artifacts
 travel by truck through the road network, pull requests are born as citizens who walk to
 Review Hall, get reviewed, grow impatient with age and eventually merge through the Merge
@@ -17,6 +21,33 @@ Milestone 1: living city foundation. Done.
 Milestone 2: expanded city and the full five stage pipeline journey. Done.
 Milestone 3: autonomous living city simulation. Done.
 Milestone 4: city events and visual overhaul. Done.
+Milestone 5: three.js renderer, two cities. Done.
+
+## Renderer
+
+three.js replaced Phaser entirely, and the domain layers were untouched by the port because
+they never knew about a renderer in the first place.
+
+```
+src/domain/ids.ts     renderer neutral ids and points
+src/simulation        the mock organization, unchanged
+src/game/state        the domain model and reducer, unchanged
+src/game/events       the City Event Director, unchanged apart from 3D focus points
+src/three             renderer, camera rig, picking, world, systems, effects, controllers
+src/components        the React shell, unchanged apart from the canvas host
+```
+
+- `src/three/world/cityPlan.ts` is pure data: two cities, nine landmarks, 350 blocks, roads,
+  water, the bridge and every route.
+- `src/three/world/CityBuilder.ts` turns that into meshes, batching ordinary blocks into
+  `InstancedMesh` so hundreds of buildings cost a handful of draw calls.
+- `src/three/core` owns the renderer, the orbit camera rig and a raycasting picker that only
+  tests registered objects, so hover stays cheap in a dense scene.
+- Vehicles, pedestrians and pull request characters move on real delta time in a frame
+  callback rather than tweens, and share geometry and materials from one cache.
+
+Controls: left drag orbits, shift or right drag pans, the wheel zooms, WASD and the arrow
+keys pan, and Reset Camera returns home.
 
 ## City events
 
