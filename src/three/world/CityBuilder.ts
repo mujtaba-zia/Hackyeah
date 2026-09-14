@@ -163,7 +163,9 @@ function sphere(
 function createGround(root: THREE.Group, assets: GeometryAssets): void {
   // Generous so the terrain runs past the fog instead of ending in a visible
   // edge against the sky.
-  const ground = box(assets, groundMaterial, 41, -0.38, 0, 900, 0.7, 760);
+  // Far larger than the view frustum so the terrain never ends on screen. The
+  // fog fades it into the sky colour long before this edge.
+  const ground = box(assets, groundMaterial, 41, -0.38, 0, 3200, 0.7, 3200);
   ground.name = 'ground';
   root.add(ground);
 

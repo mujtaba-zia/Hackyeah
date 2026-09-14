@@ -5,16 +5,18 @@ import { pick, pickWeighted, PR_TITLES, randomInt } from './MockData';
 
 const MIN_OPEN_PULL_REQUESTS = 6;
 const MAX_OPEN_PULL_REQUESTS = 14;
-const MIN_CREATION_DELAY = 40;
-const MAX_CREATION_DELAY = 100;
-const MIN_CREATION_RETRY_DELAY = 20;
-const MAX_CREATION_RETRY_DELAY = 40;
-const MIN_REVIEW_DELAY = 150;
-const MAX_REVIEW_DELAY = 300;
-const MIN_CHANGES_DELAY = 25;
-const MAX_CHANGES_DELAY = 50;
-const MIN_UPDATE_DELAY = 40;
-const MAX_UPDATE_DELAY = 80;
+// Review traffic slowed to match: a new pull request every 45 to 110 real
+// seconds, and reviews that take a believable while to come back.
+const MIN_CREATION_DELAY = 90;
+const MAX_CREATION_DELAY = 220;
+const MIN_CREATION_RETRY_DELAY = 45;
+const MAX_CREATION_RETRY_DELAY = 90;
+const MIN_REVIEW_DELAY = 260;
+const MAX_REVIEW_DELAY = 520;
+const MIN_CHANGES_DELAY = 60;
+const MAX_CHANGES_DELAY = 120;
+const MIN_UPDATE_DELAY = 90;
+const MAX_UPDATE_DELAY = 180;
 const MIN_MERGE_DELAY = 35;
 const MAX_MERGE_DELAY = 70;
 const MAX_EVENTS_PER_TICK = 64;

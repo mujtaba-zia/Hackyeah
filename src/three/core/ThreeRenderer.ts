@@ -77,9 +77,13 @@ export class ThreeRenderer {
     this.scene.background = new THREE.Color(SKY_COLOUR);
     // Far enough back that it only softens the horizon: both cities span roughly
     // 200 metres, and an aggressive fog turned the skyline into haze.
-    this.scene.fog = new THREE.Fog(SKY_COLOUR, 320, 900);
+    // Starts past the far city so both stay crisp, then blends the open ground
+    // into the sky so the horizon reads as haze instead of a cut edge.
+    this.scene.fog = new THREE.Fog(SKY_COLOUR, 430, 1150);
 
-    this.camera = new THREE.PerspectiveCamera(46, 1, 0.1, 280);
+    // The far plane must clear the maximum orbit distance plus the world behind
+    // it, otherwise zooming out clips the city away and leaves bare sky.
+    this.camera = new THREE.PerspectiveCamera(46, 1, 0.5, 3600);
     this.camera.position.set(48, 58, 72);
 
     this.hemisphereLight = new THREE.HemisphereLight(0xdff5ff, 0x6c9458, 2.1);

@@ -3,9 +3,13 @@ import type { Vec3 } from '../../domain/ids';
 import { CITIES } from '../world/cityPlan';
 
 const MIN_DISTANCE = 18;
-const MAX_DISTANCE = 420;
+// Both cities together span roughly 200 metres, so pulling back much further
+// than this just frames empty ground.
+const MAX_DISTANCE = 300;
 const MIN_POLAR = 0.42;
-const MAX_POLAR = 1.27;
+// Roughly 58 degrees from vertical. Any lower and the camera looks along the
+// ground, so the sky swallows the view when zoomed out.
+const MAX_POLAR = 1.02;
 const MIN_CAMERA_HEIGHT = 1.5;
 const DRAG_THRESHOLD_SQUARED = 36;
 const ORBIT_RADIANS_PER_PIXEL = 0.008;

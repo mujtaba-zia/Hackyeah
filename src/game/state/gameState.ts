@@ -174,7 +174,9 @@ export const REPOSITORIES: readonly Repository[] = [
   },
 ];
 
-export const SIM_MINUTES_PER_SECOND = 5;
+// Two simulated minutes per real second. The city is meant to be watched and
+// read, so a pipeline stage should take seconds to cross, not a blink.
+export const SIM_MINUTES_PER_SECOND = 2;
 
 /** How long a failed run keeps hurting city health, in simulated minutes. */
 export const FAILURE_MEMORY_MINUTES = 180;

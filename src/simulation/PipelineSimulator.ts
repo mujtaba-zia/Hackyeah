@@ -9,18 +9,21 @@ import type {
 } from '../game/state/gameState';
 import { pick, PIPELINE_NAMES, randomInt } from './MockData';
 
-const MAX_CONCURRENT_RUNS = 6;
-const MAX_RUNS_PER_REPOSITORY = 2;
+// Fewer, slower, legible runs: this is a repository visualiser, so a viewer
+// should be able to follow one pipeline through its five stages.
+const MAX_CONCURRENT_RUNS = 3;
+const MAX_RUNS_PER_REPOSITORY = 1;
 const SUCCESS_RATE = 0.85;
-// Tuned for the view rather than for realism: a run lasts roughly 12 to 20 real
-// seconds while a new one starts every 3 to 7 real seconds, so three or four
-// factories are visibly working at any moment.
-const MIN_STAGE_MINUTES = 12;
-const MAX_STAGE_MINUTES = 20;
-const MIN_RUN_START_DELAY = 16;
-const MAX_RUN_START_DELAY = 34;
-const MIN_FAILURE_COOLDOWN = 30;
-const MAX_FAILURE_COOLDOWN = 60;
+// At two simulated minutes per real second these read as: a stage every 7 to 13
+// real seconds, a whole run in 35 to 65 seconds, and a new run starting every 25
+// to 55 seconds, so one or two pipelines are usually in flight and the city is
+// rarely completely idle.
+const MIN_STAGE_MINUTES = 14;
+const MAX_STAGE_MINUTES = 26;
+const MIN_RUN_START_DELAY = 50;
+const MAX_RUN_START_DELAY = 110;
+const MIN_FAILURE_COOLDOWN = 90;
+const MAX_FAILURE_COOLDOWN = 180;
 const MAX_EVENTS_PER_TICK = 64;
 
 type Dispatch = (event: GameEvent) => void;
