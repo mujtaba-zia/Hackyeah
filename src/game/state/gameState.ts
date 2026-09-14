@@ -1,7 +1,7 @@
 import type { GameEvent } from '../systems/events';
-import type { BuildingId } from '../world/cityLayout';
+import type { BuildingId, Vec3 } from '../../domain/ids';
 
-export type RepoId = 'backend' | 'web' | 'data' | 'auth' | 'infra' | 'desktop';
+export type RepoId = 'geo' | 'b3d' | 'api' | 'web' | 'data' | 'infra';
 
 export interface Repository {
   id: RepoId;
@@ -91,7 +91,7 @@ export interface ActiveCityEvent {
   startedAtSim: number;
   endsAtReal: number;
   /** World point the event happens at, for View Event and the edge marker. */
-  focus: { x: number; y: number } | null;
+  focus: Vec3 | null;
 }
 
 export interface CityEventLogEntry {
@@ -131,46 +131,46 @@ export const STAGES: readonly PipelineStage[] = ['build', 'test', 'security', 'p
 
 export const REPOSITORIES: readonly Repository[] = [
   {
-    id: 'backend',
-    name: 'Backend API',
-    short: 'Backend',
+    id: 'geo',
+    name: 'Geo',
+    short: 'Geo',
     color: 0x4f8cff,
-    factory: 'build-factory',
+    factory: 'geo-build',
+  },
+  {
+    id: 'b3d',
+    name: 'b3d',
+    short: 'b3d',
+    color: 0xffb000,
+    factory: 'b3d-build',
+  },
+  {
+    id: 'api',
+    name: 'Geo API',
+    short: 'API',
+    color: 0x32c997,
+    factory: 'geo-build',
   },
   {
     id: 'web',
     name: 'Web Client',
     short: 'Web',
-    color: 0x32c997,
-    factory: 'frontend-factory',
+    color: 0x9b6bff,
+    factory: 'geo-build',
   },
   {
     id: 'data',
     name: 'Data Service',
     short: 'Data',
-    color: 0x9b6bff,
-    factory: 'data-factory',
-  },
-  {
-    id: 'auth',
-    name: 'Authentication',
-    short: 'Auth',
     color: 0xf59e0b,
-    factory: 'build-factory',
+    factory: 'geo-build',
   },
   {
     id: 'infra',
     name: 'Infrastructure',
     short: 'Infra',
     color: 0xef5b73,
-    factory: 'infra-factory',
-  },
-  {
-    id: 'desktop',
-    name: 'Desktop App',
-    short: 'Desktop',
-    color: 0x43b5e8,
-    factory: 'frontend-factory',
+    factory: 'geo-build',
   },
 ];
 
@@ -297,14 +297,11 @@ function capRuns(runs: PipelineRun[]): PipelineRun[] {
 }
 
 function createEmptyHistory(): Record<RepoId, RunHistoryEntry[]> {
-  return {
-    backend: [],
-    web: [],
-    data: [],
-    auth: [],
-    infra: [],
-    desktop: [],
-  };
+  // Derived from REPOSITORIES so adding or renaming a repository cannot leave a
+  // hole that computeCityHealth then spreads as undefined.
+  const history = {} as Record<RepoId, RunHistoryEntry[]>;
+  for (const repository of REPOSITORIES) history[repository.id] = [];
+  return history;
 }
 
 function copyHistory(history: Record<RepoId, RunHistoryEntry[]>): Record<RepoId, RunHistoryEntry[]> {

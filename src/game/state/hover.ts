@@ -1,5 +1,5 @@
 import type { RepoId } from './gameState';
-import type { BuildingId } from '../world/cityLayout';
+import type { BuildingId } from '../../domain/ids';
 
 /**
  * What the scene reports under the cursor. Declared next to the state rather

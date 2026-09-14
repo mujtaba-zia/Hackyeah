@@ -6,15 +6,18 @@ import {
   type Repository,
 } from '../../game/state/gameState';
 import { useGameState } from '../../hooks/useGameState';
-import { KEY_BUILDINGS, type BuildingId } from '../../game/world/cityLayout';
+import { CITIES, LANDMARKS, type BuildingId } from '../../three/world/cityPlan';
 import './BuildingPanel.css';
 
 const STAGE_BY_BUILDING: Readonly<Partial<Record<BuildingId, PipelineStage>>> = {
-  'build-factory': 'build',
-  'test-lab': 'test',
-  'security-hub': 'security',
-  'packaging-station': 'package',
-  'deployment-port': 'deploy',
+  'geo-build': 'build',
+  'geo-test': 'test',
+  'geo-security': 'security',
+  'geo-package': 'package',
+  'geo-port': 'deploy',
+  // b3d runs its own build and test for the smaller city.
+  'b3d-build': 'build',
+  'b3d-test': 'test',
 };
 
 const STAGE_LABEL: Record<PipelineStage, string> = {
@@ -89,7 +92,7 @@ function RepositoryDetails({ state, repository }: RepositoryDetailsProps) {
 /** Shows a landmark description with the live work represented by that building. */
 export function BuildingPanel({ buildingId, onClose }: Props) {
   const state = useGameState();
-  const definition = KEY_BUILDINGS.find((building) => building.id === buildingId);
+  const definition = LANDMARKS.find((building) => building.id === buildingId);
   const repositories = state.repositories.filter((repository) => repository.factory === buildingId);
   const stage = STAGE_BY_BUILDING[buildingId];
   const activeStageRuns = stage
@@ -113,8 +116,8 @@ export function BuildingPanel({ buildingId, onClose }: Props) {
 
       <dl className="building__facts">
         <div>
-          <dt>District</dt>
-          <dd className="building__district">{definition.district}</dd>
+          <dt>City</dt>
+          <dd className="building__district">{CITIES.find((c) => c.id === definition.city)?.name ?? definition.city}</dd>
         </div>
         {stage ? (
           <div>
@@ -124,7 +127,7 @@ export function BuildingPanel({ buildingId, onClose }: Props) {
             </dd>
           </div>
         ) : null}
-        {buildingId === 'review-hall' ? (
+        {buildingId === 'geo-review' ? (
           <>
             <div>
               <dt>Waiting PRs</dt>
@@ -136,7 +139,7 @@ export function BuildingPanel({ buildingId, onClose }: Props) {
             </div>
           </>
         ) : null}
-        {buildingId === 'merge-gate' ? (
+        {buildingId === 'geo-merge' ? (
           <>
             <div>
               <dt>Ready to merge</dt>

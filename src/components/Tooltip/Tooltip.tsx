@@ -10,7 +10,7 @@ import {
   type RunHistoryEntry,
 } from '../../game/state/gameState';
 import type { HoverPayload } from '../../game/state/hover';
-import { KEY_BUILDINGS, type BuildingId } from '../../game/world/cityLayout';
+import { CITIES, LANDMARKS, type BuildingId, type LandmarkKind } from '../../three/world/cityPlan';
 import { useGameState } from '../../hooks/useGameState';
 import './Tooltip.css';
 
@@ -157,11 +157,46 @@ function RepositorySummary({ repository, runs, history, pullRequestCount }: Repo
   );
 }
 
+/** Which shared pipeline stage each landmark kind hosts. */
+const STAGE_OF_KIND: Partial<Record<LandmarkKind, string>> = {
+  build: 'build',
+  test: 'test',
+  security: 'security',
+  package: 'package',
+  port: 'deploy',
+};
+
 function FactoryTooltip({ state, buildingId }: { state: GameState; buildingId: BuildingId }) {
   const repositories = state.repositories.filter((repository) => repository.factory === buildingId);
-  const building = KEY_BUILDINGS.find((candidate) => candidate.id === buildingId);
+  const building = LANDMARKS.find((candidate) => candidate.id === buildingId);
 
-  if (repositories.length === 0) return null;
+  // Landmarks that host a shared pipeline stage, Review Hall and the Merge Gate
+  // are not repository factories, but hovering them must still explain them.
+  if (repositories.length === 0) {
+    if (!building) return null;
+    const stageRuns = state.runs.filter(
+      (run) => run.status === 'running' && STAGE_OF_KIND[building.kind] === run.stage,
+    );
+    return (
+      <>
+        <h2>{building.name}</h2>
+        <p className="tooltip__intro">{CITIES.find((c) => c.id === building.city)?.name ?? building.city}</p>
+        <p className="tooltip__pr-title">{building.description}</p>
+        <dl className="tooltip__facts">
+          <div>
+            <dt>Active here</dt>
+            <dd>
+              {stageRuns.length} run{stageRuns.length === 1 ? '' : 's'}
+            </dd>
+          </div>
+          <div>
+            <dt>Open PRs</dt>
+            <dd>{state.pullRequests.length}</dd>
+          </div>
+        </dl>
+      </>
+    );
+  }
 
   return (
     <>
@@ -293,7 +328,8 @@ export function Tooltip({ payload }: { payload: HoverPayload | null }) {
   let content: ReactNode;
 
   if (payload.kind === 'factory') {
-    if (!state.repositories.some((repository) => repository.factory === payload.buildingId)) return null;
+    // Stage sites, Review Hall and the Merge Gate are landmarks without a
+    // repository, and they still deserve a card.
     content = <FactoryTooltip state={state} buildingId={payload.buildingId} />;
   } else if (payload.kind === 'pr') {
     const pullRequest = state.pullRequests.find((pr) => pr.id === payload.prId);
