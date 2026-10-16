@@ -1,0 +1,12 @@
+node_modules/
+dist/
+coverage/
+.vite/
+.DS_Store
+*.log
+
+# Secrets and personal setup never leave your machine.
+.env
+.env.*
+!.env.example
+isles.config.json
