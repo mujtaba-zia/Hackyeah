@@ -1,27 +1,36 @@
 {
-  "name": "hackyeah",
+  "name": "repo-isles",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "Visualize repositories, pull requests and pipelines from Azure DevOps or GitHub as a living world of floating islands.",
   "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.12"
+  },
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "oxlint",
-    "preview": "vite preview"
+    "dev": "concurrently -k -n server,web -c blue,green \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:server": "tsx watch --env-file-if-exists=.env server/main.ts",
+    "dev:web": "vite",
+    "build": "vite build",
+    "start": "tsx --env-file-if-exists=.env server/main.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm run test"
   },
   "dependencies": {
-    "@types/three": "^0.186.0",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "three": "^0.186.0"
+    "three": "^0.186.1",
+    "tsx": "^4.23.15",
+    "ws": "^8.22.0"
   },
   "devDependencies": {
-    "@types/node": "^24.13.3",
-    "@types/react": "^19.2.18",
-    "@types/react-dom": "^19.2.7",
-    "@vitejs/plugin-react": "^6.1.1",
-    "oxlint": "^1.81.0",
-    "typescript": "~6.0.2",
-    "vite": "^8.3.0"
+    "@types/node": "^26.6.5",
+    "@types/three": "^0.186.0",
+    "@types/ws": "^8.18.2",
+    "concurrently": "^10.0.6",
+    "jsdom": "^30.1.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.5"
   }
 }
