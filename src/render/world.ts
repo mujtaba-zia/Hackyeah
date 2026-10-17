@@ -23,7 +23,17 @@ interface PickEntry {
 interface PointerState {
   x: number;
   y: number;
+  /** Where this pointer went down, to tell a click from a drag. */
+  downX: number;
+  downY: number;
 }
+
+/** A press that moves less than this (in CSS pixels) is a click, not a drag. */
+const DRAG_THRESHOLD_PX = 6;
+const MIN_ZOOM = 0.2;
+const MAX_ZOOM = 3.2;
+/** Arrow keys pan by this many screen pixels. */
+const KEY_PAN_PX = 80;
 
 interface SceneryInput {
   signature: string;
@@ -35,7 +45,7 @@ const CAMERA_HEIGHT = 34;
 const CAMERA_OFFSET = 30;
 const FOCUS_DURATION_MS = 600;
 /** Focusing on something from the overview zooms in to roughly one island. */
-const FOCUS_ZOOM = 1.35;
+const FOCUS_ZOOM = 1.15;
 
 function sameTarget(first: PickTarget | null, second: PickTarget | null): boolean {
   return first?.kind === second?.kind && first?.id === second?.id;
@@ -120,8 +130,11 @@ export class WorldRenderer implements WorldView {
   private animationFrame = 0;
   private lastFrameAt = 0;
   private ambientTime = 0;
-  private dragDistance = 0;
+  private dragging = false;
   private pinchDistance = 0;
+  private readonly groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  private readonly groundFrom = new THREE.Vector3();
+  private readonly groundTo = new THREE.Vector3();
   private hasCity = false;
 
   constructor(
@@ -162,6 +175,7 @@ export class WorldRenderer implements WorldView {
     canvas.tabIndex = 0;
     canvas.setAttribute("aria-label", "Repository world");
     canvas.style.touchAction = "none";
+    canvas.style.cursor = "grab";
     this.effectLocator = {
       district: (id: string): Vec2 | null => this.districtPosition(id),
       tower: (id: string): Vec2 | null => this.towerPosition(id),
@@ -324,7 +338,7 @@ export class WorldRenderer implements WorldView {
     this.focusEndZoom = Math.max(this.camera.zoom, FOCUS_ZOOM);
     this.focusEndX = point.x;
     this.focusEndZ = point.z;
-    this.clampFocusEnd(this.focusEndZoom);
+    this.clampFocusEnd();
     if (this.reducedMotion) {
       this.setZoom(this.focusEndZoom);
       this.cameraTargetX = this.focusEndX;
@@ -604,26 +618,20 @@ export class WorldRenderer implements WorldView {
     this.cameraDirty = false;
   }
 
+  /**
+   * The camera may look anywhere over the world plus a margin of a little under
+   * half a screen, so any island can be dragged to any part of the view while
+   * some of the world always stays in sight.
+   */
   private clampCameraTarget(): void {
-    const xSpan = Math.min(this.worldWidth / 2, ((this.camera.right - this.camera.left) / this.camera.zoom) * 0.38);
-    const zSpan = Math.min(this.worldDepth / 2, ((this.camera.top - this.camera.bottom) / this.camera.zoom) * 0.72);
-    const minimumX = xSpan;
-    const maximumX = this.worldWidth - xSpan;
-    const minimumZ = zSpan;
-    const maximumZ = this.worldDepth - zSpan;
-    this.cameraTargetX = minimumX > maximumX ? this.worldWidth / 2 : clamp(this.cameraTargetX, minimumX, maximumX);
-    this.cameraTargetZ = minimumZ > maximumZ ? this.worldDepth / 2 : clamp(this.cameraTargetZ, minimumZ, maximumZ);
+    const margin = (((this.camera.right - this.camera.left) / this.camera.zoom) / 2) * 0.8;
+    this.cameraTargetX = clamp(this.cameraTargetX, -margin, this.worldWidth + margin);
+    this.cameraTargetZ = clamp(this.cameraTargetZ, -margin, this.worldDepth + margin);
   }
 
-  private clampFocusEnd(zoom: number): void {
-    const xSpan = Math.min(this.worldWidth / 2, ((this.camera.right - this.camera.left) / zoom) * 0.38);
-    const zSpan = Math.min(this.worldDepth / 2, ((this.camera.top - this.camera.bottom) / zoom) * 0.72);
-    const minimumX = xSpan;
-    const maximumX = this.worldWidth - xSpan;
-    const minimumZ = zSpan;
-    const maximumZ = this.worldDepth - zSpan;
-    this.focusEndX = minimumX > maximumX ? this.worldWidth / 2 : clamp(this.focusEndX, minimumX, maximumX);
-    this.focusEndZ = minimumZ > maximumZ ? this.worldDepth / 2 : clamp(this.focusEndZ, minimumZ, maximumZ);
+  private clampFocusEnd(): void {
+    this.focusEndX = clamp(this.focusEndX, 0, this.worldWidth);
+    this.focusEndZ = clamp(this.focusEndZ, 0, this.worldDepth);
   }
 
   private fitInitialCamera(): void {
@@ -633,33 +641,55 @@ export class WorldRenderer implements WorldView {
   }
 
   private setZoom(nextZoom: number): void {
-    const clamped = clamp(nextZoom, 0.45, 3.2);
+    const clamped = clamp(nextZoom, MIN_ZOOM, MAX_ZOOM);
     if (clamped === this.camera.zoom) return;
     this.camera.zoom = clamped;
     this.camera.updateProjectionMatrix();
     this.sky.resize((this.camera.right - this.camera.left) / clamped, (this.camera.top - this.camera.bottom) / clamped);
-    this.clampCameraTarget();
     this.cameraDirty = true;
   }
 
-  private panFromScreen(deltaX: number, deltaY: number): void {
-    const unitPerPixel = (this.camera.top - this.camera.bottom) / (this.viewportHeight * this.camera.zoom);
-    this.cameraTargetX += (-deltaX + deltaY) * unitPerPixel * 0.6;
-    this.cameraTargetZ += (deltaX + deltaY) * unitPerPixel * 0.6;
+  /** Where a screen point meets the ground (y = 0) with the camera as it is now. */
+  private groundAt(clientX: number, clientY: number, out: THREE.Vector3): boolean {
+    if (this.cameraDirty) this.applyCamera();
+    const rect = this.canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return false;
+    this.pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    this.pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+    return this.raycaster.ray.intersectPlane(this.groundPlane, out) !== null;
+  }
+
+  /** Slides the world so the ground under (fromX, fromY) ends up under (toX, toY). */
+  private panBetween(fromX: number, fromY: number, toX: number, toY: number): void {
+    if (!this.groundAt(fromX, fromY, this.groundFrom) || !this.groundAt(toX, toY, this.groundTo)) return;
+    this.cameraTargetX += this.groundFrom.x - this.groundTo.x;
+    this.cameraTargetZ += this.groundFrom.z - this.groundTo.z;
     this.clampCameraTarget();
     this.focusing = false;
     this.cameraDirty = true;
   }
 
+  /** Zooms while keeping the ground under the given screen point fixed. */
+  private zoomAt(factor: number, clientX: number, clientY: number): void {
+    const anchored = this.groundAt(clientX, clientY, this.groundFrom);
+    this.setZoom(this.camera.zoom * factor);
+    this.focusing = false;
+    if (!anchored || !this.groundAt(clientX, clientY, this.groundTo)) return;
+    this.cameraTargetX += this.groundFrom.x - this.groundTo.x;
+    this.cameraTargetZ += this.groundFrom.z - this.groundTo.z;
+    this.clampCameraTarget();
+    this.cameraDirty = true;
+  }
+
   private onPointerDown(event: PointerEvent): void {
-    if (this.disposed) return;
+    if (this.disposed || event.button > 0) return;
     this.canvas.focus();
-    this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    this.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY, downX: event.clientX, downY: event.clientY });
+    if (this.pointers.size === 1) this.dragging = false;
     if (this.pointers.size === 2) {
-      this.dragDistance = 16;
+      this.dragging = true;
       this.pinchDistance = this.currentPinchDistance();
-    } else {
-      this.dragDistance = 0;
     }
     this.canvas.setPointerCapture(event.pointerId);
     event.preventDefault();
@@ -668,57 +698,90 @@ export class WorldRenderer implements WorldView {
   private onPointerMove(event: PointerEvent): void {
     const pointer = this.pointers.get(event.pointerId);
     if (!pointer) {
-      if (event.pointerType === "mouse") this.setHover(this.pickAt(event.clientX, event.clientY));
+      if (event.pointerType === "mouse") {
+        const target = this.pickAt(event.clientX, event.clientY);
+        this.setHover(target);
+        this.canvas.style.cursor = target ? "pointer" : "grab";
+      }
       return;
     }
-    const deltaX = event.clientX - pointer.x;
-    const deltaY = event.clientY - pointer.y;
+    const fromX = pointer.x;
+    const fromY = pointer.y;
     pointer.x = event.clientX;
     pointer.y = event.clientY;
-    this.dragDistance += deltaX * deltaX + deltaY * deltaY;
-    if (this.pointers.size === 1) {
-      this.panFromScreen(deltaX, deltaY);
-    } else if (this.pointers.size >= 2) {
+    if (!this.dragging && Math.hypot(pointer.x - pointer.downX, pointer.y - pointer.downY) > DRAG_THRESHOLD_PX) {
+      this.dragging = true;
+      this.setHover(null);
+      // Catch up the movement that happened inside the threshold, so the grab point stays put.
+      if (this.pointers.size === 1) this.panBetween(pointer.downX, pointer.downY, pointer.x, pointer.y);
+    } else if (this.dragging && this.pointers.size === 1) {
+      this.panBetween(fromX, fromY, pointer.x, pointer.y);
+    }
+    if (this.dragging) this.canvas.style.cursor = "grabbing";
+    if (this.pointers.size >= 2) {
       const distance = this.currentPinchDistance();
-      if (this.pinchDistance > 0 && distance > 0) this.setZoom(this.camera.zoom * (distance / this.pinchDistance));
+      const mid = this.pinchMidpoint();
+      if (this.pinchDistance > 0 && distance > 0 && mid) this.zoomAt(distance / this.pinchDistance, mid.x, mid.y);
       this.pinchDistance = distance;
     }
     event.preventDefault();
   }
 
   private onPointerUp(event: PointerEvent): void {
-    const wasTap = this.dragDistance < 16;
-    this.pointers.delete(event.pointerId);
-    if (this.pointers.size < 2) this.pinchDistance = 0;
-    if (this.canvas.hasPointerCapture(event.pointerId)) this.canvas.releasePointerCapture(event.pointerId);
-    if (wasTap) {
+    if (!this.pointers.has(event.pointerId)) return;
+    const wasClick = !this.dragging && this.pointers.size === 1;
+    this.releasePointer(event.pointerId);
+    if (wasClick) {
       const target = this.pickAt(event.clientX, event.clientY);
       this.select(target);
       this.options.onPick(target);
     }
+    this.canvas.style.cursor = "grab";
     event.preventDefault();
   }
 
   private onPointerCancel(event: PointerEvent): void {
-    this.pointers.delete(event.pointerId);
+    this.releasePointer(event.pointerId);
+    this.canvas.style.cursor = "grab";
+  }
+
+  private releasePointer(pointerId: number): void {
+    this.pointers.delete(pointerId);
     if (this.pointers.size < 2) this.pinchDistance = 0;
-    if (this.canvas.hasPointerCapture(event.pointerId)) this.canvas.releasePointerCapture(event.pointerId);
+    if (this.canvas.hasPointerCapture(pointerId)) this.canvas.releasePointerCapture(pointerId);
+    // Lifting one finger of a pinch must not turn the remaining finger's release into a click.
+    if (this.pointers.size === 0) this.dragging = false;
   }
 
   private onWheel(event: WheelEvent): void {
-    this.setZoom(this.camera.zoom * Math.exp(-event.deltaY * 0.0012));
+    // Trackpad pinch arrives as ctrl+wheel with small deltas; scale it up to feel the same.
+    const delta = event.ctrlKey ? event.deltaY * 4 : event.deltaY;
+    this.zoomAt(Math.exp(-delta * 0.0015), event.clientX, event.clientY);
     event.preventDefault();
   }
 
   private onKeyDown(event: KeyboardEvent): void {
-    if (event.key === "ArrowLeft") this.panFromScreen(-55, 0);
-    else if (event.key === "ArrowRight") this.panFromScreen(55, 0);
-    else if (event.key === "ArrowUp") this.panFromScreen(0, -55);
-    else if (event.key === "ArrowDown") this.panFromScreen(0, 55);
-    else if (event.key === "+" || event.key === "=") this.setZoom(this.camera.zoom * 1.15);
-    else if (event.key === "-" || event.key === "_") this.setZoom(this.camera.zoom / 1.15);
+    const rect = this.canvas.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    // Arrow keys move the view in that direction, i.e. the world the opposite way.
+    if (event.key === "ArrowLeft") this.panBetween(cx, cy, cx + KEY_PAN_PX, cy);
+    else if (event.key === "ArrowRight") this.panBetween(cx, cy, cx - KEY_PAN_PX, cy);
+    else if (event.key === "ArrowUp") this.panBetween(cx, cy, cx, cy + KEY_PAN_PX);
+    else if (event.key === "ArrowDown") this.panBetween(cx, cy, cx, cy - KEY_PAN_PX);
+    else if (event.key === "+" || event.key === "=") this.zoomAt(1.15, cx, cy);
+    else if (event.key === "-" || event.key === "_") this.zoomAt(1 / 1.15, cx, cy);
     else return;
     event.preventDefault();
+  }
+
+  private pinchMidpoint(): { x: number; y: number } | null {
+    let first: PointerState | null = null;
+    for (const pointer of this.pointers.values()) {
+      if (!first) first = pointer;
+      else return { x: (first.x + pointer.x) / 2, y: (first.y + pointer.y) / 2 };
+    }
+    return null;
   }
 
   private currentPinchDistance(): number {
