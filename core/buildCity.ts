@@ -435,7 +435,8 @@ export function buildCity(snapshot: Snapshot, config: AppConfig, now: Date): Cit
   const links: CityModel["links"] = [];
   for (const tower of towers) {
     for (const districtId of tower.coversDistrictIds) {
-      const district = districtsById[districtId];
+      // A tower standing in its own district needs no cable to it; cables show reach beyond home.
+      const district = districtId === tower.islandId ? undefined : districtsById[districtId];
       if (district === undefined) continue;
       links.push({
         id: `${tower.id}->${district.id}`,

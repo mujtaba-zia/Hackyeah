@@ -523,7 +523,7 @@ describe("buildCity incident rules", () => {
     }
   });
 
-  it("breaks only links owned by a shared outage tower", () => {
+  it("cables only reach beyond a tower's home, and only a shared outage breaks them", () => {
     const app = makeRepo("mock:app", "app");
     const api = makeRepo("mock:api", "api");
     const web = makeRepo("mock:web", "web");
@@ -550,12 +550,10 @@ describe("buildCity incident rules", () => {
       NOW,
     );
 
+    // Towers stand in their home district, so they draw no cable to it.
     expect(Object.fromEntries(city.links.map((link) => [link.id, link.broken]))).toEqual({
-      "healthy->mock:app": false,
       "healthy->mock:web": false,
       "shared->mock:api": true,
-      "shared->mock:app": true,
-      "solo->mock:web": false,
     });
   });
 

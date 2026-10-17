@@ -102,6 +102,7 @@ describe("mock provider", () => {
     for (const op of [
       { kind: "setPipelineResult", pipelineId: "mock:pipeline:missing", result: "success" as const },
       { kind: "addPullRequest", repoId: "mock:missing", draft: false },
+      { kind: "addPipeline", repoId: "mock:missing", release: false },
     ] as const) {
       try {
         provider.apply(op);
@@ -111,6 +112,25 @@ describe("mock provider", () => {
         if (error instanceof ProviderError) expect(error.code).toBe("notFound");
       }
     }
+  });
+
+  it("adds pipelines that appear as new towers on their repo's island, each in its own spot", async () => {
+    const provider = createMockProvider({ now: () => NOW });
+    const before = await cityFor(provider, "calm");
+    const district = before.districts[0]!;
+    const towersBefore = before.towers.filter((tower) => tower.islandId === district.id);
+
+    provider.apply({ kind: "addPipeline", repoId: district.id, release: false });
+    provider.apply({ kind: "addPipeline", repoId: district.id, release: true });
+    const snapshot = await completeSnapshot(provider);
+    const after = buildCity(snapshot, { ...DEFAULT_CONFIG, scenario: "calm", maxRepos: 64 }, NOW);
+    const towersAfter = after.towers.filter((tower) => tower.islandId === district.id);
+
+    expect(towersAfter).toHaveLength(towersBefore.length + 2);
+    const added = towersAfter.filter((tower) => !towersBefore.some((old) => old.id === tower.id));
+    expect(added.map((tower) => `${tower.kind}:${tower.status}`).sort()).toEqual(["ci:success", "release:success"]);
+    const spots = new Set(towersAfter.map((tower) => `${tower.position.x},${tower.position.z}`));
+    expect(spots.size).toBe(towersAfter.length);
   });
 
   it("rejects malformed scenario JSON with a clear configuration error", () => {

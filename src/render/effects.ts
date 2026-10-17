@@ -192,9 +192,9 @@ function createRainGeometry(seed: number, offset: number): THREE.BufferGeometry 
   const drops = 18;
   const positions = new Float32Array(drops * 6);
   for (let index = 0; index < drops; index += 1) {
-    const x = seededRange(seed, offset + index * 3, -3, 3);
-    const z = seededRange(seed, offset + index * 3 + 1, -3, 3);
-    const y = seededRange(seed, offset + index * 3 + 2, 1.25, 6.8);
+    const x = seededRange(seed, offset + index * 3, -2, 2);
+    const z = seededRange(seed, offset + index * 3 + 1, -2, 2);
+    const y = seededRange(seed, offset + index * 3 + 2, 0.9, 3.4);
     const position = index * 6;
     positions[position] = x;
     positions[position + 1] = y;
@@ -209,11 +209,14 @@ function createRainGeometry(seed: number, offset: number): THREE.BufferGeometry 
 }
 
 /**
- * The camera looks down from +x/+z, so anything high above the plaza is drawn
- * on top of the HQ behind it. Hanging the storm a little towards the viewer
- * keeps it visually over the plaza and the house in sight.
+ * The camera looks down from +x/+z, so anything above the plaza is drawn over
+ * whatever stands behind it, and the HQ always stands behind the plaza. The
+ * storm therefore hangs low over the plaza's front edge (towards the viewer):
+ * on screen it lands in front of the HQ's doorstep instead of across its walls.
+ * Clouds spread sideways (across the view) rather than in depth.
  */
-const STORM_SHIFT = 1.8;
+const STORM_FORWARD = 4.4;
+const STORM_HEIGHT = 3.3;
 
 function createStormEffect(incident: Incident, locator: EffectLocator): StormEffect {
   const group = new THREE.Group();
@@ -226,7 +229,6 @@ function createStormEffect(incident: Incident, locator: EffectLocator): StormEff
   if (positions.length === 0) positions.push(incident.focus);
   const seed = hashString(incident.id);
   const clouds: THREE.Mesh[] = [];
-  // Storm clouds hang above the tallest building (the HQ spire tops out near 6).
   const CLOUDS = 5;
   const cloudHeights = new Float32Array(positions.length * CLOUDS);
   const rain: THREE.LineSegments[] = [];
@@ -243,22 +245,27 @@ function createStormEffect(incident: Incident, locator: EffectLocator): StormEff
     group.add(tint);
     for (let cloudIndex = 0; cloudIndex < CLOUDS; cloudIndex += 1) {
       const cloud = new THREE.Mesh(
-        new THREE.DodecahedronGeometry(1.05, 0),
-        new THREE.MeshStandardMaterial({ color: 0x303749, flatShading: true, roughness: 1 }),
+        new THREE.DodecahedronGeometry(0.9, 0),
+        new THREE.MeshStandardMaterial({ color: 0x3a4256, flatShading: true, roughness: 1, transparent: true, opacity: 0.86 }),
       );
       const combinedIndex = targetIndex * CLOUDS + cloudIndex;
-      const x = seededRange(seed, combinedIndex * 3, -2.2, 2.2);
-      const z = seededRange(seed, combinedIndex * 3 + 1, -1.6, 1.6);
-      const y = seededRange(seed, combinedIndex * 3 + 2, 7.0, 7.6);
-      cloud.position.set(position.x + STORM_SHIFT + x, y, position.z + STORM_SHIFT + z);
-      cloud.scale.set(1.4, 0.75, 1.05);
+      // `across` runs left-right on screen, `depth` towards/away from the camera.
+      const across = (cloudIndex - (CLOUDS - 1) / 2) * 0.95 + seededRange(seed, combinedIndex * 3, -0.2, 0.2);
+      const depth = seededRange(seed, combinedIndex * 3 + 1, -0.35, 0.35);
+      const y = STORM_HEIGHT + seededRange(seed, combinedIndex * 3 + 2, 0, 0.45);
+      cloud.position.set(
+        position.x + STORM_FORWARD + depth + across,
+        y,
+        position.z + STORM_FORWARD + depth - across,
+      );
+      cloud.scale.set(1.3, 0.7, 1.0);
       clouds.push(cloud);
       cloudHeights[combinedIndex] = y;
       group.add(cloud);
     }
     const rainMaterial = new THREE.LineBasicMaterial({ color: 0x7bcaff, transparent: true, opacity: 0.74 });
     const rainLines = new THREE.LineSegments(createRainGeometry(seed, 200 + targetIndex * 60), rainMaterial);
-    rainLines.position.set(position.x + STORM_SHIFT, 0, position.z + STORM_SHIFT);
+    rainLines.position.set(position.x + STORM_FORWARD, 0, position.z + STORM_FORWARD);
     rain.push(rainLines);
     group.add(rainLines);
   }

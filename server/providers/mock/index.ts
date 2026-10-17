@@ -60,6 +60,9 @@ const COMPLETED_RUN_RESULTS: Record<RunResult, boolean> = {
   none: false,
 };
 
+const GENERATED_PIPELINE_NAMES = ["Lint", "Unit tests", "Integration tests", "Security scan", "Docs build", "Nightly"];
+const GENERATED_RELEASE_NAMES = ["Deploy staging", "Release", "Deploy production"];
+
 const GENERATED_TITLES = [
   "Tighten audit logging",
   "Polish the deployment summary",
@@ -441,6 +444,9 @@ class ScenarioMockProvider implements MockProvider {
       case "addPullRequest":
         this.addPullRequest(op.repoId, op.draft);
         return;
+      case "addPipeline":
+        this.addPipeline(op.repoId, op.release);
+        return;
       case "agePullRequests":
         this.agePullRequests(op.days);
         return;
@@ -504,6 +510,36 @@ class ScenarioMockProvider implements MockProvider {
       verdict: "none",
       hasConflicts: false,
       checks: "none",
+    });
+  }
+
+  /** A new pipeline appears with one passing run, the way a freshly added workflow would. */
+  private addPipeline(repoId: string, release: boolean): void {
+    const repo = this.data.repos.find((candidate) => candidate.id === repoId);
+    if (repo === undefined) throw new ProviderError("notFound", `Mock repository not found: ${repoId}`);
+    if (typeof release !== "boolean") throw new ProviderError("config", "Mock pipeline release flag must be a boolean");
+
+    const names = release ? GENERATED_RELEASE_NAMES : GENERATED_PIPELINE_NAMES;
+    const taken: Record<string, true> = Object.create(null);
+    for (const pipeline of this.data.pipelines) taken[pipeline.name] = true;
+    // First unused name: "Lint", "Unit tests", …, then "Lint 2", "Unit tests 2", …
+    let name = "";
+    for (let index = 0; name === "" || Object.hasOwn(taken, name); index += 1) {
+      const lap = Math.floor(index / names.length);
+      name = `${repo.name} ${names[index % names.length] ?? "Checks"}${lap > 0 ? ` ${lap + 1}` : ""}`;
+    }
+    const pipelineIds: Record<string, true> = Object.create(null);
+    for (const pipeline of this.data.pipelines) pipelineIds[pipeline.id] = true;
+    this.operationNumber += 1;
+    while (Object.hasOwn(pipelineIds, `mock:pipeline:${this.operationNumber}`)) this.operationNumber += 1;
+    const timestamp = validNow(this.clock).toISOString();
+    this.data.pipelines.push({
+      id: `mock:pipeline:${this.operationNumber}`,
+      name,
+      homeRepoId: repoId,
+      coversRepoIds: [repoId],
+      kind: release ? "release" : "ci",
+      runs: [{ id: `mock:run:${this.operationNumber}`, result: "success", startedAt: timestamp, finishedAt: timestamp }],
     });
   }
 
