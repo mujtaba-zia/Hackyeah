@@ -34,6 +34,8 @@ const EMPTY_POSITIONS: readonly Vec2[] = [];
 const CAMERA_HEIGHT = 34;
 const CAMERA_OFFSET = 30;
 const FOCUS_DURATION_MS = 600;
+/** Focusing on something from the overview zooms in to roughly one island. */
+const FOCUS_ZOOM = 1.35;
 
 function sameTarget(first: PickTarget | null, second: PickTarget | null): boolean {
   return first?.kind === second?.kind && first?.id === second?.id;
@@ -106,6 +108,8 @@ export class WorldRenderer implements WorldView {
   private focusStartZ = 10;
   private focusEndX = 10;
   private focusEndZ = 10;
+  private focusStartZoom = 1;
+  private focusEndZoom = 1;
   private focusStartedAt = 0;
   private focusing = false;
   private cameraDirty = true;
@@ -127,7 +131,7 @@ export class WorldRenderer implements WorldView {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.setClearColor(0x5a7ea1, 1);
-    this.assets = new AssetStore();
+    this.assets = new AssetStore(options.kit);
     this.camera.position.set(this.cameraTargetX + CAMERA_OFFSET, CAMERA_HEIGHT, this.cameraTargetZ + CAMERA_OFFSET);
     this.camera.lookAt(this.cameraTargetX, 0, this.cameraTargetZ);
     this.scene.add(this.camera);
@@ -317,10 +321,12 @@ export class WorldRenderer implements WorldView {
 
   focus(point: Vec2): void {
     if (this.disposed) return;
+    this.focusEndZoom = Math.max(this.camera.zoom, FOCUS_ZOOM);
     this.focusEndX = point.x;
     this.focusEndZ = point.z;
-    this.clampFocusEnd();
+    this.clampFocusEnd(this.focusEndZoom);
     if (this.reducedMotion) {
+      this.setZoom(this.focusEndZoom);
       this.cameraTargetX = this.focusEndX;
       this.cameraTargetZ = this.focusEndZ;
       this.focusing = false;
@@ -329,6 +335,7 @@ export class WorldRenderer implements WorldView {
     }
     this.focusStartX = this.cameraTargetX;
     this.focusStartZ = this.cameraTargetZ;
+    this.focusStartZoom = this.camera.zoom;
     this.focusStartedAt = performance.now();
     this.focusing = true;
   }
@@ -337,6 +344,7 @@ export class WorldRenderer implements WorldView {
     if (this.reducedMotion === on) return;
     this.reducedMotion = on;
     if (on && this.focusing) {
+      this.setZoom(this.focusEndZoom);
       this.cameraTargetX = this.focusEndX;
       this.cameraTargetZ = this.focusEndZ;
       this.focusing = false;
@@ -581,6 +589,8 @@ export class WorldRenderer implements WorldView {
     if (!this.focusing) return;
     const progress = Math.min(1, (time - this.focusStartedAt) / FOCUS_DURATION_MS);
     const eased = progress * progress * (3 - progress * 2);
+    // Zoom first: setZoom re-clamps the target, which the interpolation then overrides.
+    this.setZoom(this.focusStartZoom + (this.focusEndZoom - this.focusStartZoom) * eased);
     this.cameraTargetX = this.focusStartX + (this.focusEndX - this.focusStartX) * eased;
     this.cameraTargetZ = this.focusStartZ + (this.focusEndZ - this.focusStartZ) * eased;
     this.cameraDirty = true;
@@ -605,9 +615,9 @@ export class WorldRenderer implements WorldView {
     this.cameraTargetZ = minimumZ > maximumZ ? this.worldDepth / 2 : clamp(this.cameraTargetZ, minimumZ, maximumZ);
   }
 
-  private clampFocusEnd(): void {
-    const xSpan = Math.min(this.worldWidth / 2, ((this.camera.right - this.camera.left) / this.camera.zoom) * 0.38);
-    const zSpan = Math.min(this.worldDepth / 2, ((this.camera.top - this.camera.bottom) / this.camera.zoom) * 0.72);
+  private clampFocusEnd(zoom: number): void {
+    const xSpan = Math.min(this.worldWidth / 2, ((this.camera.right - this.camera.left) / zoom) * 0.38);
+    const zSpan = Math.min(this.worldDepth / 2, ((this.camera.top - this.camera.bottom) / zoom) * 0.72);
     const minimumX = xSpan;
     const maximumX = this.worldWidth - xSpan;
     const minimumZ = zSpan;

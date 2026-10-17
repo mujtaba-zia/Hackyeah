@@ -14,6 +14,7 @@ export const copy = {
   reconnecting: "Reconnecting…",
   connecting: "Connecting…",
   noWebgl: "3D view unavailable in this browser. Everything else still works.",
+  modelsFailed: "The 3D models could not be loaded. Everything else still works.",
   refreshNow: "Refresh now",
   notConfigured: "not configured on server",
   watchAll: "All",
