@@ -19,7 +19,7 @@ export function stalePrs(context: RuleContext): Incident[] {
       severity: "warning",
       title: `${stale.length} stale ${label} in ${district.name}`,
       detail: "These pull requests have not changed recently.",
-      effect: "beacon",
+      effect: null,
       targets: { districts: [district.id], towers: [], creatures: stale.map((creature) => creature.id) },
       focus: district.hq,
     });
