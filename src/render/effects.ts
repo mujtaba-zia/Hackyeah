@@ -189,12 +189,12 @@ function createCrowdEffect(incident: Incident, locator: EffectLocator): CrowdEff
 }
 
 function createRainGeometry(seed: number, offset: number): THREE.BufferGeometry {
-  const drops = 10;
+  const drops = 18;
   const positions = new Float32Array(drops * 6);
   for (let index = 0; index < drops; index += 1) {
-    const x = seededRange(seed, offset + index * 3, -2.7, 2.7);
-    const z = seededRange(seed, offset + index * 3 + 1, -2.7, 2.7);
-    const y = seededRange(seed, offset + index * 3 + 2, 1.25, 4.35);
+    const x = seededRange(seed, offset + index * 3, -3, 3);
+    const z = seededRange(seed, offset + index * 3 + 1, -3, 3);
+    const y = seededRange(seed, offset + index * 3 + 2, 1.25, 6.8);
     const position = index * 6;
     positions[position] = x;
     positions[position + 1] = y;
@@ -208,6 +208,13 @@ function createRainGeometry(seed: number, offset: number): THREE.BufferGeometry 
   return geometry;
 }
 
+/**
+ * The camera looks down from +x/+z, so anything high above the plaza is drawn
+ * on top of the HQ behind it. Hanging the storm a little towards the viewer
+ * keeps it visually over the plaza and the house in sight.
+ */
+const STORM_SHIFT = 1.8;
+
 function createStormEffect(incident: Incident, locator: EffectLocator): StormEffect {
   const group = new THREE.Group();
   group.name = `effect:storm:${incident.id}`;
@@ -219,7 +226,9 @@ function createStormEffect(incident: Incident, locator: EffectLocator): StormEff
   if (positions.length === 0) positions.push(incident.focus);
   const seed = hashString(incident.id);
   const clouds: THREE.Mesh[] = [];
-  const cloudHeights = new Float32Array(positions.length * 3);
+  // Storm clouds hang above the tallest building (the HQ spire tops out near 6).
+  const CLOUDS = 5;
+  const cloudHeights = new Float32Array(positions.length * CLOUDS);
   const rain: THREE.LineSegments[] = [];
 
   for (let targetIndex = 0; targetIndex < positions.length; targetIndex += 1) {
@@ -232,24 +241,24 @@ function createStormEffect(incident: Incident, locator: EffectLocator): StormEff
     tint.rotation.x = -Math.PI * 0.5;
     tint.position.set(position.x, 0.06, position.z);
     group.add(tint);
-    for (let cloudIndex = 0; cloudIndex < 3; cloudIndex += 1) {
+    for (let cloudIndex = 0; cloudIndex < CLOUDS; cloudIndex += 1) {
       const cloud = new THREE.Mesh(
         new THREE.DodecahedronGeometry(1.05, 0),
         new THREE.MeshStandardMaterial({ color: 0x303749, flatShading: true, roughness: 1 }),
       );
-      const combinedIndex = targetIndex * 3 + cloudIndex;
-      const x = seededRange(seed, combinedIndex * 3, -1.25, 1.25);
-      const z = seededRange(seed, combinedIndex * 3 + 1, -0.85, 0.85);
-      const y = seededRange(seed, combinedIndex * 3 + 2, 4.25, 4.85);
-      cloud.position.set(position.x + x, y, position.z + z);
-      cloud.scale.set(1.25, 0.72, 0.95);
+      const combinedIndex = targetIndex * CLOUDS + cloudIndex;
+      const x = seededRange(seed, combinedIndex * 3, -2.2, 2.2);
+      const z = seededRange(seed, combinedIndex * 3 + 1, -1.6, 1.6);
+      const y = seededRange(seed, combinedIndex * 3 + 2, 7.0, 7.6);
+      cloud.position.set(position.x + STORM_SHIFT + x, y, position.z + STORM_SHIFT + z);
+      cloud.scale.set(1.4, 0.75, 1.05);
       clouds.push(cloud);
       cloudHeights[combinedIndex] = y;
       group.add(cloud);
     }
     const rainMaterial = new THREE.LineBasicMaterial({ color: 0x7bcaff, transparent: true, opacity: 0.74 });
-    const rainLines = new THREE.LineSegments(createRainGeometry(seed, 200 + targetIndex * 40), rainMaterial);
-    rainLines.position.set(position.x, 0, position.z);
+    const rainLines = new THREE.LineSegments(createRainGeometry(seed, 200 + targetIndex * 60), rainMaterial);
+    rainLines.position.set(position.x + STORM_SHIFT, 0, position.z + STORM_SHIFT);
     rain.push(rainLines);
     group.add(rainLines);
   }
