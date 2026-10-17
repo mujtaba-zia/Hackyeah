@@ -89,6 +89,7 @@ export function createAzureProvider(settings: AzureSettings, fetchFn: FetchFn = 
     repoByAzureId: Map<string, RepoInfo>,
   ): Promise<PullRequestInfo[]> {
     if (repos.length === 0) return [];
+    // Azure applies $top across the whole project, so a busy repo can still crowd out peers.
     const top = Math.max(1, repos.length * maxPrsPerRepo);
     const payload = await request(`/_apis/git/pullrequests?searchCriteria.status=active&$top=${top}&api-version=${API_VERSION}`, project);
     const counts: Record<string, number> = {};
@@ -113,7 +114,7 @@ export function createAzureProvider(settings: AzureSettings, fetchFn: FetchFn = 
 
     // The definitions list includes both repository id and folder path, so this is
     // one definitions request and at most one batched builds request per project.
-    const definitionPayload = await request(`/_apis/build/definitions?includeLatestBuilds=false&api-version=${API_VERSION}`, project);
+    const definitionPayload = await request(`/_apis/build/definitions?includeLatestBuilds=false&includeAllProperties=true&api-version=${API_VERSION}`, project);
     const definitions = responseValues(definitionPayload)
       .map((value) => readDefinition(value, repoByAzureId))
       .filter((definition): definition is AzureDefinition => definition !== null);
@@ -135,7 +136,7 @@ export function createAzureProvider(settings: AzureSettings, fetchFn: FetchFn = 
     }
 
     return definitions.map((definition) => ({
-      id: `az:build:${definition.id}`,
+      id: `az:build:${project}:${definition.id}`,
       name: definition.name,
       homeRepoId: definition.homeRepo.id,
       coversRepoIds: coveredRepoIds(definition, repos, coverage),

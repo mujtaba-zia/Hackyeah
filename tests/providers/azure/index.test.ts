@@ -73,13 +73,15 @@ function snapshotFetch(calls: string[]): FetchFn {
       });
     }
     if (input.includes("/_apis/build/definitions")) {
-      return json({
-        value: [
-          { id: 7, name: "Deploy Web", path: "\\Release", repository: { id: "repo-web" } },
-          { id: 8, name: "API CI", path: "\\CI", repository: { id: "repo-api" } },
-          { id: 9, name: "Other CI", path: "\\CI", repository: { id: "other" } },
-        ],
-      });
+      const definitions = [
+        { id: 7, name: "Deploy Web", path: "\\Release", repository: { id: "repo-web" } },
+        { id: 8, name: "API CI", path: "\\CI", repository: { id: "repo-api" } },
+        { id: 9, name: "Other CI", path: "\\CI", repository: { id: "other" } },
+      ];
+      if (!input.includes("includeAllProperties=true")) {
+        return json({ value: definitions.map(({ repository: _repository, ...definition }) => definition) });
+      }
+      return json({ value: definitions });
     }
     if (input.includes("/_apis/build/builds")) {
       return json({
@@ -137,7 +139,34 @@ describe("createAzureProvider", () => {
     expect(ci?.runs.map((run) => run.result)).toEqual(["running", "queued", "queued", "partial", "cancelled"]);
     expect(calls.find((call) => call.includes("/_apis/git/pullrequests"))).toContain("$top=4");
     expect(calls.find((call) => call.includes("/_apis/build/builds"))).toContain("definitions=7,8");
+    expect(calls.find((call) => call.includes("/_apis/build/definitions"))).toContain("includeAllProperties=true");
   });
+
+  it("keeps project-scoped definition IDs distinct", async () => {
+    const twoProjectSettings: AzureSettings = { ...settings, projects: ["Harbor", "Bay"] };
+    const provider = createAzureProvider(twoProjectSettings, async (input) => {
+      const project = input.includes("/Harbor/") ? "Harbor" : "Bay";
+      if (input.includes("/_apis/git/repositories")) {
+        return json({ value: [{ id: `repo-${project}`, name: project }] });
+      }
+      if (input.includes("/_apis/git/pullrequests")) return json({ value: [] });
+      if (input.includes("/_apis/build/definitions")) {
+        if (!input.includes("includeAllProperties=true")) return json({ value: [{ id: 7, name: "CI", path: "\\CI" }] });
+        return json({ value: [{ id: 7, name: "CI", path: "\\CI", repository: { id: `repo-${project}` } }] });
+      }
+      if (input.includes("/_apis/build/builds")) return json({ value: [] });
+      throw new Error(`unexpected URL: ${input}`);
+    });
+
+    const snapshot = await provider.fetchSnapshot({
+      repoIds: ["az:repo-Harbor", "az:repo-Bay"],
+      maxPrsPerRepo: 2,
+      coverage: {},
+    });
+
+    expect(snapshot.pipelines.map((pipeline) => pipeline.id)).toEqual(["az:build:Harbor:7", "az:build:Bay:7"]);
+  });
+
 
   it("keeps newest build first even when the REST response is unordered", async () => {
     const calls: string[] = [];
