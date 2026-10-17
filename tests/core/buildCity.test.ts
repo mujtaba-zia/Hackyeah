@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { HQ_FOOTPRINT, TOWER_FOOTPRINT, TOWER_SLOTS, buildCity } from "../../core/buildCity";
+import { HQ_FOOTPRINT, TOWER_FOOTPRINT, TOWER_SLOTS, TOWER_SPACING, buildCity } from "../../core/buildCity";
 import { selectRepos } from "../../core/selectRepos";
 import { DEFAULT_CONFIG } from "../../shared/config";
 import { RULE_IDS } from "../../shared/types";
@@ -254,8 +254,8 @@ describe("buildCity pipelines", () => {
     expect(tower?.position.z).toBeGreaterThanOrEqual(outskirts?.origin.z ?? Number.POSITIVE_INFINITY);
   });
 
-  it("gives a busy district room for 70+ towers, all on the island and clear of each other", () => {
-    expect(TOWER_SLOTS.length).toBeGreaterThanOrEqual(70);
+  it("gives a busy district room for 40 well-spaced towers, all on the island and clear of each other", () => {
+    expect(TOWER_SLOTS.length).toBeGreaterThanOrEqual(40);
     const repo = makeRepo("mock:busy", "busy");
     const pipelines = TOWER_SLOTS.map((_, index) => makePipeline(`p${index}`, `pipeline-${index}`, repo.id));
     const city = buildCity(makeSnapshot([repo], [], pipelines), makeConfig({ rules: onlyRules() }), NOW);
@@ -277,11 +277,17 @@ describe("buildCity pipelines", () => {
       expect(distance(tower.position, district.plaza.center)).toBeGreaterThan(district.plaza.radius + 0.4 + TOWER);
       expect(distance(tower.position, district.hq)).toBeGreaterThan(HQ + TOWER);
       expect(distance(tower.position, district.nursery.center)).toBeGreaterThan(district.nursery.radius + 0.6 + TOWER);
-      // Nothing stands between the camera (looking from +x/+z) and the plaza.
-      const angle = (Math.atan2(tower.position.z - centre.z, tower.position.x - centre.x) * 180) / Math.PI;
-      expect(angle > 10 && angle < 80).toBe(false);
+      // Nothing stands in the strip between the camera (looking from +x/+z) and the plaza.
+      const across = (tower.position.x - centre.x - (tower.position.z - centre.z)) / Math.SQRT2;
+      const depth = (tower.position.x - centre.x + (tower.position.z - centre.z)) / Math.SQRT2;
+      expect(depth > 0 && depth < 8.5 && Math.abs(across) < 3.6).toBe(false);
       for (const other of city.towers) {
-        if (other !== tower) expect(distance(tower.position, other.position)).toBeGreaterThanOrEqual(1.25);
+        if (other === tower) continue;
+        expect(distance(tower.position, other.position)).toBeGreaterThanOrEqual(TOWER_SPACING - 0.01);
+        // Towers one behind the other on screen are at least two rows apart.
+        const otherAcross = (other.position.x - centre.x - (other.position.z - centre.z)) / Math.SQRT2;
+        const otherDepth = (other.position.x - centre.x + (other.position.z - centre.z)) / Math.SQRT2;
+        if (Math.abs(across - otherAcross) < 1) expect(Math.abs(depth - otherDepth)).toBeGreaterThan(4.7);
       }
     }
   });
