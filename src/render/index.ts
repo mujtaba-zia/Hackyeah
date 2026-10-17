@@ -1,7 +1,8 @@
-import type { PickTarget, WorldView } from "./contracts";
+import type { WorldView, WorldViewOptions } from "./contracts";
 import { WorldRenderer } from "./world";
 
-export type { PickTarget, WorldView } from "./contracts";
+export type { PickTarget, WorldView, WorldViewOptions } from "./contracts";
+export { loadModelKit, type ModelKit } from "./kit";
 
 function webglAvailable(canvas: HTMLCanvasElement): boolean {
   try {
@@ -12,10 +13,7 @@ function webglAvailable(canvas: HTMLCanvasElement): boolean {
 }
 
 /** Creates the independently updateable Three.js surface used by the HUD. */
-export function createWorldView(
-  canvas: HTMLCanvasElement,
-  options: { onPick(target: PickTarget | null): void; onHover?(target: PickTarget | null): void },
-): WorldView {
+export function createWorldView(canvas: HTMLCanvasElement, options: WorldViewOptions): WorldView {
   if (!webglAvailable(canvas)) {
     canvas.hidden = true;
     throw new Error("webgl-unavailable");

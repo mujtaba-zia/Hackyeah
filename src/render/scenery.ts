@@ -5,10 +5,14 @@ export type SceneryKind = "tree" | "rock";
 
 export interface SceneryPlacement {
   kind: SceneryKind;
+  /** Which of the kit's tree or rock models to use. */
+  variant: 0 | 1 | 2;
   position: Vec2;
   scale: number;
   rotation: number;
 }
+
+const VARIANTS = [0, 1, 2] as const;
 
 export interface SceneryReservations {
   hq?: Vec2;
@@ -35,19 +39,10 @@ export function isSceneryPlacementFree(
   placement: Vec2,
   reservations: SceneryReservations,
 ): boolean {
-  const edge = 0.85;
-  if (
-    placement.x < island.origin.x + edge ||
-    placement.x > island.origin.x + island.size.x - edge ||
-    placement.z < island.origin.z + edge ||
-    placement.z > island.origin.z + island.size.z - edge
-  ) {
-    return false;
-  }
-
-  // The tower row is always the island's positive-x edge, whether or not a
-  // pipeline currently occupies every pad on it.
-  if (placement.x > island.origin.x + island.size.x - 2.45) return false;
+  // Island outlines are rounded and wobble down to 0.88 of the half-size, so
+  // keep scenery inside that circle with room for a crown or boulder.
+  const centre = { x: island.origin.x + island.size.x / 2, z: island.origin.z + island.size.z / 2 };
+  if (!isInsideCircle(placement, centre, (island.size.x / 2) * 0.88 - 0.6)) return false;
   if (reservations.hq && !hasClearance(placement, reservations.hq, 2.3)) return false;
   if (reservations.plaza && isInsideCircle(placement, reservations.plaza.center, reservations.plaza.radius + 0.9)) {
     return false;
@@ -72,7 +67,7 @@ export function isSceneryPlacementFree(
  */
 export function placeScenery(island: Island, reservations: SceneryReservations): SceneryPlacement[] {
   const placements: SceneryPlacement[] = [];
-  const target = island.kind === "filler" ? 7 : 11;
+  const target = island.kind === "filler" ? 10 : 14;
   const attempts = target * 8;
 
   for (let index = 0; index < attempts && placements.length < target; index += 1) {
@@ -94,6 +89,7 @@ export function placeScenery(island: Island, reservations: SceneryReservations):
 
     placements.push({
       kind: seededUnit(island.seed, index * 5 + 2) > 0.42 ? "tree" : "rock",
+      variant: VARIANTS[Math.floor(seededUnit(island.seed, 10_000 + index) * VARIANTS.length)] ?? 0,
       position,
       scale: seededRange(island.seed, index * 5 + 3, 0.72, 1.28),
       rotation: seededRange(island.seed, index * 5 + 4, 0, Math.PI * 2),

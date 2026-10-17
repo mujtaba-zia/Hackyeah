@@ -21,7 +21,8 @@ Credentials exist only in the server's environment.
 | `core/` | Pure, deterministic logic: `selectRepos` (watch list + cap), `buildCity` (moods, towers, links, layout), `rules/` (one module per kind of problem). No clocks, randomness or I/O. | `shared` |
 | `server/providers/` | Read-only data sources implementing `Provider`: `github/`, `azure/`, `mock/` (with JSON scenarios). | `shared` |
 | `server/` | `env.ts` (environment + `isles.config.json`), `state.ts` (poll loop, caching, throttling, provider switching), `app.ts` (HTTP, `/health`, `/ws`, static files), `main.ts`. | `shared`, `core`, providers |
-| `src/render/` | The three.js world behind `createWorldView()`: islands, sky, water, scenery, buildings, creatures, links, effects, labels, picking. | `shared` |
+| `src/render/` | The three.js world behind `createWorldView()`: islands, sky, water, scenery, buildings, creatures, links, effects, labels, picking. `kit.ts` loads the model kit. | `shared` |
+| `art/blender/` | Blender Python that builds every model (`kitlib.py` primitives, `models_*.py`, `build_kit.py` export). Output: `public/models/kit.glb`. | Blender only |
 | `src/app/`, `src/ui/` | The client: socket with reconnect, a small store, and the HUD panels. | `shared`, `src/render` |
 
 ## One poll

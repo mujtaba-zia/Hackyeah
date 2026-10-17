@@ -3,6 +3,7 @@ import type { Island } from "../../shared/types";
 import type { RenderAssets } from "./assets";
 import { seededRange, seededUnit } from "./hash";
 import type { SceneryPlacement } from "./scenery";
+import type { KitModel } from "./kit";
 
 export interface IslandVisual {
   readonly group: THREE.Group;
@@ -142,61 +143,40 @@ export function createIslandVisual(initial: Island, assets: RenderAssets): Islan
   };
 }
 
+const SCENERY_MODELS: Record<SceneryPlacement["kind"], readonly [KitModel, KitModel, KitModel]> = {
+  tree: ["tree_pine", "tree_round", "tree_birch"],
+  rock: ["rock_1", "rock_2", "rock_3"],
+};
+
+/** One instanced draw per kit part, so a forest of a hundred trees costs a handful of calls. */
 function buildSceneryContent(placements: readonly SceneryPlacement[], assets: RenderAssets): THREE.Group {
   const group = new THREE.Group();
-  let treeCount = 0;
-  let rockCount = 0;
-  for (let index = 0; index < placements.length; index += 1) {
-    const placement = placements[index];
-    if (!placement) continue;
-    if (placement.kind === "tree") treeCount += 1;
-    else rockCount += 1;
+  const byModel = new Map<KitModel, SceneryPlacement[]>();
+  for (const placement of placements) {
+    const model = SCENERY_MODELS[placement.kind][placement.variant];
+    const list = byModel.get(model);
+    if (list) list.push(placement);
+    else byModel.set(model, [placement]);
   }
 
   const position = new THREE.Vector3();
   const scale = new THREE.Vector3();
   const rotation = new THREE.Quaternion();
   const matrix = new THREE.Matrix4();
-  if (treeCount > 0) {
-    const trunks = new THREE.InstancedMesh(assets.treeTrunkGeometry, assets.treeTrunkMaterial, treeCount);
-    const crowns = new THREE.InstancedMesh(assets.treeLeafGeometry, assets.treeLeafMaterial, treeCount);
-    let treeIndex = 0;
-    for (let index = 0; index < placements.length; index += 1) {
-      const placement = placements[index];
-      if (!placement || placement.kind !== "tree") continue;
-      rotation.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, placement.rotation);
-      scale.set(placement.scale, placement.scale, placement.scale);
-      position.set(placement.position.x, 0.47 * placement.scale, placement.position.z);
-      matrix.compose(position, rotation, scale);
-      trunks.setMatrixAt(treeIndex, matrix);
-      position.set(placement.position.x, 1.2 * placement.scale, placement.position.z);
-      matrix.compose(position, rotation, scale);
-      crowns.setMatrixAt(treeIndex, matrix);
-      treeIndex += 1;
+  for (const [model, list] of byModel) {
+    for (const part of assets.kit.parts(model)) {
+      const mesh = new THREE.InstancedMesh(part.geometry, part.material, list.length);
+      list.forEach((placement, index) => {
+        rotation.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, placement.rotation);
+        scale.setScalar(placement.scale);
+        position.set(placement.position.x, 0.04, placement.position.z);
+        matrix.compose(position, rotation, scale);
+        mesh.setMatrixAt(index, matrix);
+      });
+      mesh.instanceMatrix.needsUpdate = true;
+      mesh.computeBoundingSphere();
+      group.add(mesh);
     }
-    trunks.instanceMatrix.needsUpdate = true;
-    crowns.instanceMatrix.needsUpdate = true;
-    trunks.computeBoundingSphere();
-    crowns.computeBoundingSphere();
-    group.add(trunks, crowns);
-  }
-
-  if (rockCount > 0) {
-    const rocks = new THREE.InstancedMesh(assets.sceneryRockGeometry, assets.sceneryRockMaterial, rockCount);
-    let rockIndex = 0;
-    for (let index = 0; index < placements.length; index += 1) {
-      const placement = placements[index];
-      if (!placement || placement.kind !== "rock") continue;
-      rotation.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, placement.rotation);
-      scale.set(placement.scale, placement.scale * 0.75, placement.scale);
-      position.set(placement.position.x, 0.28 * placement.scale, placement.position.z);
-      matrix.compose(position, rotation, scale);
-      rocks.setMatrixAt(rockIndex, matrix);
-      rockIndex += 1;
-    }
-    rocks.instanceMatrix.needsUpdate = true;
-    rocks.computeBoundingSphere();
-    group.add(rocks);
   }
   return group;
 }

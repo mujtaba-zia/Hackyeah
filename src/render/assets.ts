@@ -1,16 +1,16 @@
 import * as THREE from "three";
 import type { CheckState, Health, IslandKind, Mood, RunResult } from "../../shared/types";
-import { creatureTextureKey } from "./textures";
+import type { ModelKit } from "./kit";
 
-const MOOD_COLOURS: Record<Mood, string> = {
-  egg: "#f5e7b8",
-  fresh: "#6dd9ff",
-  waiting: "#ffd166",
-  approved: "#77e28d",
-  changes: "#ffad66",
-  stale: "#b99cff",
-  blocked: "#f1788d",
-  rejected: "#e85465",
+const MOOD_COLOURS: Record<Mood, number> = {
+  egg: 0xf5e7b8,
+  fresh: 0x6dd9ff,
+  waiting: 0xffd166,
+  approved: 0x77e28d,
+  changes: 0xffad66,
+  stale: 0xb99cff,
+  blocked: 0xf1788d,
+  rejected: 0xe85465,
 };
 
 const STATUS_COLOURS: Record<RunResult, number> = {
@@ -21,6 +21,12 @@ const STATUS_COLOURS: Record<RunResult, number> = {
   running: 0x69b9ff,
   queued: 0xe8d96b,
   none: 0x7d899a,
+};
+
+const HEALTH_COLOURS: Record<Health, number> = {
+  good: 0x3fae74,
+  warn: 0xe0993f,
+  bad: 0xd4495a,
 };
 
 function canvasWithContext(width: number, height: number): [HTMLCanvasElement, CanvasRenderingContext2D] {
@@ -63,116 +69,76 @@ function drawSoftParticleTexture(): THREE.CanvasTexture {
   return finishCanvasTexture(canvas);
 }
 
-function drawCreatureTexture(mood: Mood, checks: CheckState): THREE.CanvasTexture {
-  const [canvas, context] = canvasWithContext(128, 128);
-  const bodyColour = MOOD_COLOURS[mood];
-  context.clearRect(0, 0, 128, 128);
-
-  if (mood === "egg") {
-    context.fillStyle = "rgba(55, 42, 55, 0.28)";
-    context.beginPath();
-    context.ellipse(66, 105, 33, 8, 0, 0, Math.PI * 2);
-    context.fill();
-    context.fillStyle = bodyColour;
-    context.beginPath();
-    context.ellipse(64, 71, 34, 46, 0, 0, Math.PI * 2);
-    context.fill();
-    context.strokeStyle = "#d5b96e";
-    context.lineWidth = 4;
-    context.stroke();
-    context.fillStyle = "#e5c875";
-    context.beginPath();
-    context.arc(48, 59, 5, 0, Math.PI * 2);
-    context.arc(76, 83, 5, 0, Math.PI * 2);
-    context.fill();
-  } else {
-    context.fillStyle = "rgba(30, 38, 58, 0.28)";
-    context.beginPath();
-    context.ellipse(64, 104, 36, 8, 0, 0, Math.PI * 2);
-    context.fill();
-    context.fillStyle = bodyColour;
-    context.beginPath();
-    context.arc(64, 68, 34, 0, Math.PI * 2);
-    context.fill();
-    context.fillStyle = bodyColour;
-    context.beginPath();
-    context.moveTo(40, 45);
-    context.lineTo(42, 21);
-    context.lineTo(56, 40);
-    context.moveTo(88, 45);
-    context.lineTo(86, 21);
-    context.lineTo(72, 40);
-    context.fill();
-    context.fillStyle = "#192339";
-    context.beginPath();
-    context.arc(52, 65, 4, 0, Math.PI * 2);
-    context.arc(76, 65, 4, 0, Math.PI * 2);
-    context.fill();
-    context.strokeStyle = "#192339";
-    context.lineWidth = 4;
-    context.beginPath();
-    context.arc(64, 74, 12, 0.15, Math.PI - 0.15);
-    context.stroke();
-  }
-
+/** The badge floating over a PR whose checks are running (hourglass) or failing (cross). */
+function drawCheckBadge(checks: "pending" | "failure"): THREE.CanvasTexture {
+  const [canvas, context] = canvasWithContext(64, 64);
+  context.fillStyle = "rgba(20, 28, 44, 0.82)";
+  context.beginPath();
+  context.arc(32, 32, 29, 0, Math.PI * 2);
+  context.fill();
+  context.lineCap = "round";
   if (checks === "pending") {
     context.strokeStyle = "#ffd766";
     context.fillStyle = "#ffd766";
-    context.lineWidth = 6;
+    context.lineWidth = 5;
     context.beginPath();
-    context.moveTo(99, 17);
-    context.lineTo(116, 17);
-    context.moveTo(99, 45);
-    context.lineTo(116, 45);
+    context.moveTo(20, 16);
+    context.lineTo(44, 16);
+    context.moveTo(20, 48);
+    context.lineTo(44, 48);
     context.stroke();
     context.beginPath();
-    context.moveTo(102, 18);
-    context.lineTo(113, 29);
-    context.lineTo(102, 44);
+    context.moveTo(23, 18);
+    context.lineTo(41, 18);
+    context.lineTo(32, 32);
+    context.lineTo(41, 46);
+    context.lineTo(23, 46);
+    context.lineTo(32, 32);
     context.closePath();
     context.fill();
-  }
-  if (checks === "failure") {
+  } else {
     context.strokeStyle = "#ff5367";
     context.lineWidth = 8;
     context.beginPath();
-    context.moveTo(99, 19);
-    context.lineTo(116, 45);
-    context.moveTo(116, 19);
-    context.lineTo(99, 45);
+    context.moveTo(20, 20);
+    context.lineTo(44, 44);
+    context.moveTo(44, 20);
+    context.lineTo(20, 44);
     context.stroke();
   }
   return finishCanvasTexture(canvas);
 }
 
-function createStatusMaterials(): Record<RunResult, THREE.MeshBasicMaterial> {
-  return {
-    success: new THREE.MeshBasicMaterial({ color: STATUS_COLOURS.success }),
-    failure: new THREE.MeshBasicMaterial({ color: STATUS_COLOURS.failure }),
-    partial: new THREE.MeshBasicMaterial({ color: STATUS_COLOURS.partial }),
-    cancelled: new THREE.MeshBasicMaterial({ color: STATUS_COLOURS.cancelled }),
-    running: new THREE.MeshBasicMaterial({ color: STATUS_COLOURS.running }),
-    queued: new THREE.MeshBasicMaterial({ color: STATUS_COLOURS.queued }),
-    none: new THREE.MeshBasicMaterial({ color: STATUS_COLOURS.none }),
-  };
+function recoloured<K extends string>(template: THREE.Material, colours: Record<K, number>, glow: boolean): Record<K, THREE.Material> {
+  const out = {} as Record<K, THREE.Material>;
+  for (const key of Object.keys(colours) as K[]) {
+    const material = template.clone();
+    if (material instanceof THREE.MeshStandardMaterial) {
+      material.color.setHex(colours[key]);
+      if (glow) {
+        material.emissive.setHex(colours[key]);
+        material.emissiveIntensity = 1.4;
+      }
+    }
+    out[key] = material;
+  }
+  return out;
 }
 
-/** Shared geometries, materials, and procedural texture cache for one world. */
+/** Shared geometries, materials and textures for one world, built around the model kit. */
 export class RenderAssets {
+  readonly kit: ModelKit;
   readonly grassMaterials: Record<IslandKind, THREE.MeshStandardMaterial>;
-  readonly hqMaterials: Record<Health, THREE.MeshStandardMaterial>;
-  readonly statusMaterials: Record<RunResult, THREE.MeshBasicMaterial>;
+  /** HQ spire, banner and flag, per district health. */
+  readonly accentMaterials: Record<Health, THREE.Material>;
+  /** Tower lantern / brazier, per latest run. */
+  readonly beaconMaterials: Record<RunResult, THREE.Material>;
+  /** Creature body and egg shell, per mood. */
+  readonly bodyMaterials: Record<Mood, THREE.Material>;
+  readonly checkBadges: Record<"pending" | "failure", THREE.SpriteMaterial>;
   readonly rockMaterial = new THREE.MeshStandardMaterial({ color: 0x5c5c70, flatShading: true, roughness: 1 });
-  readonly treeTrunkMaterial = new THREE.MeshStandardMaterial({ color: 0x5b3c28, flatShading: true });
-  readonly treeLeafMaterial = new THREE.MeshStandardMaterial({ color: 0x2f874f, flatShading: true });
-  readonly sceneryRockMaterial = new THREE.MeshStandardMaterial({ color: 0x808494, flatShading: true });
   readonly bridgeMaterial = new THREE.MeshStandardMaterial({ color: 0x9a673d, roughness: 0.9 });
   readonly bridgeRopeMaterial = new THREE.LineBasicMaterial({ color: 0xd6b078, transparent: true, opacity: 0.72 });
-  readonly towerBodyMaterial = new THREE.MeshStandardMaterial({ color: 0x49546b, roughness: 0.65, metalness: 0.2 });
-  readonly towerReleaseMaterial = new THREE.MeshStandardMaterial({ color: 0x6a567f, roughness: 0.56, metalness: 0.18 });
-  readonly flagMaterial = new THREE.MeshBasicMaterial({ color: 0xf0a85d, side: THREE.DoubleSide });
-  readonly windowMaterial = new THREE.MeshBasicMaterial({ color: 0xc5e9ff });
-  readonly roofMaterial = new THREE.MeshStandardMaterial({ color: 0x3c4054, flatShading: true });
   readonly pickMaterial = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false });
   readonly selectionMaterial = new THREE.MeshBasicMaterial({
     color: 0xffe786,
@@ -185,36 +151,28 @@ export class RenderAssets {
   readonly particleTexture: THREE.CanvasTexture;
   readonly waterfallUniforms = { time: { value: 0 } };
   readonly waterfallMaterial: THREE.ShaderMaterial;
-  readonly treeTrunkGeometry = new THREE.CylinderGeometry(0.11, 0.16, 0.9, 5);
-  readonly treeLeafGeometry = new THREE.ConeGeometry(0.57, 1.5, 6);
-  readonly sceneryRockGeometry = new THREE.DodecahedronGeometry(0.42, 0);
   readonly bridgePlankGeometry = new THREE.BoxGeometry(0.72, 0.14, 0.8);
   readonly bridgePostGeometry = new THREE.CylinderGeometry(0.06, 0.08, 0.72, 5);
-  readonly hqBaseGeometry = new THREE.BoxGeometry(1.7, 1.25, 1.45);
-  readonly hqRoofGeometry = new THREE.ConeGeometry(1.35, 1.05, 4);
-  readonly hqWindowGeometry = new THREE.BoxGeometry(0.34, 0.3, 0.03);
-  readonly towerBaseGeometry = new THREE.CylinderGeometry(0.64, 0.78, 0.32, 8);
-  readonly ciTowerGeometry = new THREE.CylinderGeometry(0.25, 0.4, 3.2, 7);
-  readonly releaseTowerGeometry = new THREE.CylinderGeometry(0.62, 0.82, 2.15, 8);
-  readonly beaconGeometry = new THREE.SphereGeometry(0.23, 10, 8);
-  readonly flagGeometry = new THREE.PlaneGeometry(0.85, 0.46);
   readonly pickSurfaceGeometry = new THREE.PlaneGeometry(1, 1);
   readonly selectionGeometry = new THREE.RingGeometry(0.72, 0.92, 28);
   readonly waterfallGeometry = new THREE.PlaneGeometry(1, 1, 1, 8);
-  private readonly creatureTextures = new Map<string, THREE.CanvasTexture>();
 
-  constructor() {
+  constructor(kit: ModelKit) {
+    this.kit = kit;
     this.grassMaterials = {
       district: new THREE.MeshStandardMaterial({ color: 0x62ae5f, roughness: 0.95, flatShading: true }),
       outskirts: new THREE.MeshStandardMaterial({ color: 0x6f9f6a, roughness: 0.95, flatShading: true }),
       filler: new THREE.MeshStandardMaterial({ color: 0x7ca56d, roughness: 1, flatShading: true }),
     };
-    this.hqMaterials = {
-      good: new THREE.MeshStandardMaterial({ color: 0x4cae78, roughness: 0.65 }),
-      warn: new THREE.MeshStandardMaterial({ color: 0xd79a4e, roughness: 0.65 }),
-      bad: new THREE.MeshStandardMaterial({ color: 0xc85b63, roughness: 0.65 }),
+    this.accentMaterials = recoloured(kit.template("hq", "Accent"), HEALTH_COLOURS, false);
+    this.beaconMaterials = recoloured(kit.template("tower_ci", "Beacon"), STATUS_COLOURS, true);
+    this.bodyMaterials = recoloured(kit.template("creature", "Body"), MOOD_COLOURS, false);
+    const pending = drawCheckBadge("pending");
+    const failure = drawCheckBadge("failure");
+    this.checkBadges = {
+      pending: new THREE.SpriteMaterial({ map: pending, transparent: true, depthWrite: false }),
+      failure: new THREE.SpriteMaterial({ map: failure, transparent: true, depthWrite: false }),
     };
-    this.statusMaterials = createStatusMaterials();
     this.cloudTexture = drawCloudTexture();
     this.particleTexture = drawSoftParticleTexture();
     this.mistMaterial = new THREE.SpriteMaterial({
@@ -248,13 +206,8 @@ export class RenderAssets {
     });
   }
 
-  creatureTexture(mood: Mood, checks: CheckState): THREE.CanvasTexture {
-    const key = creatureTextureKey(mood, checks);
-    const cached = this.creatureTextures.get(key);
-    if (cached) return cached;
-    const texture = drawCreatureTexture(mood, checks);
-    this.creatureTextures.set(key, texture);
-    return texture;
+  checkBadge(checks: CheckState): THREE.SpriteMaterial | null {
+    return checks === "pending" || checks === "failure" ? this.checkBadges[checks] : null;
   }
 
   statusColour(status: RunResult): number {
@@ -262,56 +215,31 @@ export class RenderAssets {
   }
 
   dispose(): void {
-    this.rockMaterial.dispose();
-    this.treeTrunkMaterial.dispose();
-    this.treeLeafMaterial.dispose();
-    this.sceneryRockMaterial.dispose();
-    this.bridgeMaterial.dispose();
-    this.bridgeRopeMaterial.dispose();
-    this.towerBodyMaterial.dispose();
-    this.towerReleaseMaterial.dispose();
-    this.flagMaterial.dispose();
-    this.windowMaterial.dispose();
-    this.roofMaterial.dispose();
-    this.pickMaterial.dispose();
-    this.selectionMaterial.dispose();
-    this.mistMaterial.dispose();
-    this.waterfallMaterial.dispose();
-    this.cloudTexture.dispose();
-    this.particleTexture.dispose();
-    this.treeTrunkGeometry.dispose();
-    this.treeLeafGeometry.dispose();
-    this.sceneryRockGeometry.dispose();
-    this.bridgePlankGeometry.dispose();
-    this.bridgePostGeometry.dispose();
-    this.hqBaseGeometry.dispose();
-    this.hqRoofGeometry.dispose();
-    this.hqWindowGeometry.dispose();
-    this.towerBaseGeometry.dispose();
-    this.ciTowerGeometry.dispose();
-    this.releaseTowerGeometry.dispose();
-    this.beaconGeometry.dispose();
-    this.flagGeometry.dispose();
-    this.pickSurfaceGeometry.dispose();
-    this.selectionGeometry.dispose();
-    this.waterfallGeometry.dispose();
-
-    const islandKinds: IslandKind[] = ["district", "outskirts", "filler"];
-    for (let index = 0; index < islandKinds.length; index += 1) {
-      const kind = islandKinds[index];
-      if (kind) this.grassMaterials[kind].dispose();
+    const owned: { dispose(): void }[] = [
+      this.rockMaterial,
+      this.bridgeMaterial,
+      this.bridgeRopeMaterial,
+      this.pickMaterial,
+      this.selectionMaterial,
+      this.mistMaterial,
+      this.waterfallMaterial,
+      this.cloudTexture,
+      this.particleTexture,
+      this.bridgePlankGeometry,
+      this.bridgePostGeometry,
+      this.pickSurfaceGeometry,
+      this.selectionGeometry,
+      this.waterfallGeometry,
+      ...Object.values(this.grassMaterials),
+      ...Object.values(this.accentMaterials),
+      ...Object.values(this.beaconMaterials),
+      ...Object.values(this.bodyMaterials),
+    ];
+    for (const badge of Object.values(this.checkBadges)) {
+      badge.map?.dispose();
+      owned.push(badge);
     }
-    const healths: Health[] = ["good", "warn", "bad"];
-    for (let index = 0; index < healths.length; index += 1) {
-      const health = healths[index];
-      if (health) this.hqMaterials[health].dispose();
-    }
-    const statuses: RunResult[] = ["success", "failure", "partial", "cancelled", "running", "queued", "none"];
-    for (let index = 0; index < statuses.length; index += 1) {
-      const status = statuses[index];
-      if (status) this.statusMaterials[status].dispose();
-    }
-    for (const texture of this.creatureTextures.values()) texture.dispose();
-    this.creatureTextures.clear();
+    for (const item of owned) item.dispose();
+    this.kit.dispose();
   }
 }
