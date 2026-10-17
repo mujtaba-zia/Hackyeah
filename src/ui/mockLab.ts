@@ -16,12 +16,25 @@ export function mountMockLab(panel: HTMLElement, store: Store, actions: HudActio
   const body = el("div", { class: "lab-body" });
   panel.append(el("header", {}, el("h2", { text: copy.mockLab })), body);
 
+  /** Keeps a control's current choice when the lab is rebuilt with new options. */
+  function carryOver(role: string, next: HTMLSelectElement | HTMLInputElement): void {
+    const previous = body.querySelector(`[data-role="${role}"]`);
+    next.dataset.role = role;
+    if (!(previous instanceof HTMLSelectElement || previous instanceof HTMLInputElement)) return;
+    if (next instanceof HTMLSelectElement && ![...next.options].some((option) => option.value === previous.value)) return;
+    next.value = previous.value;
+  }
+
   function build(server: ClientState): void {
     const city = server.city;
     const pipelines = select((city?.towers ?? []).map((tower) => ({ value: tower.id, label: tower.name })));
     const results = select(RESULTS.map((result) => ({ value: result, label: resultLabel[result] })));
     const repos = select(server.repoCatalog.map((repo) => ({ value: repo.id, label: repo.name })));
     const days = el("input", { attrs: { type: "number", min: "1", step: "1", value: "3", "aria-label": copy.agePrs } });
+    carryOver("pipeline", pipelines);
+    carryOver("result", results);
+    carryOver("repo", repos);
+    carryOver("days", days);
 
     body.replaceChildren(
       el(
@@ -46,6 +59,8 @@ export function mountMockLab(panel: HTMLElement, store: Store, actions: HudActio
         repos,
         el("button", { text: copy.addPr, attrs: { type: "button" }, on: { click: () => actions.send({ type: "mockOp", op: { kind: "addPullRequest", repoId: repos.value, draft: false } }) } }),
         el("button", { text: copy.addDraft, attrs: { type: "button" }, on: { click: () => actions.send({ type: "mockOp", op: { kind: "addPullRequest", repoId: repos.value, draft: true } }) } }),
+        el("button", { text: copy.addPipeline, attrs: { type: "button" }, on: { click: () => actions.send({ type: "mockOp", op: { kind: "addPipeline", repoId: repos.value, release: false } }) } }),
+        el("button", { text: copy.addRelease, attrs: { type: "button" }, on: { click: () => actions.send({ type: "mockOp", op: { kind: "addPipeline", repoId: repos.value, release: true } }) } }),
       ),
       el(
         "section",

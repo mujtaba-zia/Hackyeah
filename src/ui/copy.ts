@@ -29,6 +29,8 @@ export const copy = {
   apply: "Apply",
   addPr: "Add PR",
   addDraft: "Add draft",
+  addPipeline: "Add CI pipeline",
+  addRelease: "Add release",
   agePrs: "Age every PR by (days)",
   reset: "Reset scenario",
   setResult: "Set latest run",

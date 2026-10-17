@@ -126,13 +126,17 @@ Incidents are sorted critical → error → warning, then by title. Incident ids
   banner and flag take the district's health colour.
 - **Towers**: CI pipelines are lighthouses fed by brass pipes; releases are harbour keeps with a
   brazier, crates and a crane. The lantern or brazier glows in the latest run's status colour.
+  Towers follow the data: a pipeline that appears or disappears between polls gains or loses
+  its tower without a reload.
 - **Plaza and nursery**: a cobbled square with lamps and benches; a fenced hay paddock.
 - **Creatures**: round 3D critters coloured by mood that waddle around their home spot facing
   where they walk; drafts are speckled eggs in straw nests that wobble. A check badge
   (hourglass, cross) floats above.
-- **Links**: arcs from tower to covered districts. Calm cyan when fine, pulsing red when broken.
+- **Links**: arcs from a tower to every *other* district it covers (none to its own home).
+  Calm cyan when fine, pulsing red when broken.
 - **Effects**: fire+smoke particles (`fire`), grey smoke (`smoke`), a ring + tight cluster (`crowd`),
-  a dark storm cloud with rain and red tint over the district (`storm`), a vertical light pillar (`beacon`),
+  a low line of storm clouds with rain over the district's front edge plus a red ground tint, kept
+  on the camera side so it never hides buildings (`storm`), a vertical light pillar (`beacon`),
   a huge low-poly monster towering over the affected districts (`giant`).
 - **Labels**: district name signs always visible; tower names on hover/selection.
 - `prefers-reduced-motion`: freeze all ambient animation (clouds, water, wandering, particles).
@@ -150,8 +154,8 @@ Incidents are sorted critical → error → warning, then by title. Incident ids
 - **Settings panel**: provider (options for providers without server credentials are disabled with
   reason "not configured on server"), mock scenario, watched repos checklist (search box, select all/none),
   thresholds, rule toggles, poll interval, "Refresh now".
-- **Mock lab** (mock provider only): set any pipeline's latest result, add a PR/draft to a repo,
-  age every PR by N days, reset scenario.
+- **Mock lab** (mock provider only): set any pipeline's latest result, add a PR/draft, a CI pipeline
+  or a release to a repo, age every PR by N days, reset scenario.
 - Copy is short and plain. No tutorials, no "click here", no talk about how it was built.
 - Every string from a provider is rendered with `textContent`, never `innerHTML`.
 
