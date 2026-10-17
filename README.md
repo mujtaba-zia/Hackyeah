@@ -27,8 +27,8 @@ npm run dev
 ```
 
 Open <http://localhost:5173>. With no credentials you get the mock estate. Open
-**Mock lab** to fail a pipeline, add PRs, or age everything by a few days and
-watch the world react.
+**Mock lab** to fail a pipeline, add PRs or new pipelines, or age everything by a
+few days and watch the world react.
 
 ## Show your own repositories
 
@@ -88,7 +88,7 @@ defaults, copy `isles.config.example.json` to `isles.config.json` (gitignored):
 | Egg in the nursery | A draft pull request. |
 | Hourglass / red X above a creature | The PR's checks are running / failing. |
 | Tower | A pipeline or workflow. Slim towers are CI, wide towers with a flag are releases. The light shows the latest run. |
-| Cable between islands | A pipeline that builds more than one repository. It turns red and pulses when that pipeline fails. |
+| Cable between islands | A pipeline that also builds other repositories. It turns red and pulses when that pipeline fails. |
 | Fire | A failing pipeline. |
 | Storm | A failing pipeline that several repositories depend on. |
 | Crowd | Too many PRs waiting on review. |
