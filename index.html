@@ -3,10 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; connect-src 'self' ws: wss:; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'"
+    />
     <title>Repo Isles</title>
   </head>
   <body>
-    <div id="app"></div>
+    <canvas id="world" tabindex="0" aria-label="World view"></canvas>
+    <p id="webgl-note" class="webgl-note"></p>
+    <header id="top-bar" class="top-bar"></header>
+    <main class="hud">
+      <aside id="problems" class="panel left" aria-label="Problems"></aside>
+      <div class="right">
+        <aside id="detail" class="panel" aria-label="Details" hidden></aside>
+        <aside id="legend" class="panel" aria-label="Legend" hidden></aside>
+        <aside id="settings" class="panel" aria-label="Settings" hidden></aside>
+        <aside id="mock-lab" class="panel" aria-label="Mock lab" hidden></aside>
+      </div>
+    </main>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
