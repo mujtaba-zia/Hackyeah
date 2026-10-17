@@ -135,6 +135,21 @@ describe("selectRepos", () => {
       "mock:missing",
     ]);
   });
+
+  it("accepts repo names and project/name in a hand-written watch list", () => {
+    const repos = [
+      { ...makeRepo("az:1f0c", "payments"), project: "Contoso" },
+      { ...makeRepo("az:9b2e", "payments"), project: "Fabrikam" },
+      { ...makeRepo("az:77aa", "Catalog"), project: "Contoso" },
+    ];
+    const byName = makeConfig({ watchedRepoIds: ["CATALOG"], maxRepos: 12 });
+    const qualified = makeConfig({ watchedRepoIds: ["fabrikam/payments"], maxRepos: 12 });
+    const bare = makeConfig({ watchedRepoIds: ["payments"], maxRepos: 12 });
+
+    expect(selectRepos(repos, byName).map((repo) => repo.id)).toEqual(["az:77aa"]);
+    expect(selectRepos(repos, qualified).map((repo) => repo.id)).toEqual(["az:9b2e"]);
+    expect(selectRepos(repos, bare).map((repo) => repo.id)).toEqual(["az:1f0c", "az:9b2e"]);
+  });
 });
 
 describe("buildCity pull request mapping", () => {
