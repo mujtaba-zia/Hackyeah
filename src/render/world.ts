@@ -5,10 +5,9 @@ import { RenderAssets as AssetStore } from "./assets";
 import { createBridgeVisual, type BridgeVisual } from "./bridges";
 import { createCreatureVisual, type CreatureVisual } from "./creatures";
 import { reconcileById } from "./diff";
-import { createEffectSlot, type EffectLocator, type EffectSlot } from "./effects";
+import { createEffectSlot, hasEffect, type EffectLocator, type EffectSlot } from "./effects";
 import { createDistrictVisual, createTowerVisual, type DistrictVisual, type TowerVisual } from "./buildings";
 import { createIslandVisual, createSceneryVisual, type IslandVisual, type SceneryVisual } from "./islands";
-import { createLinkVisual, type LinkVisual } from "./links";
 import { placeScenery, type SceneryReservations } from "./scenery";
 import { SkySystem } from "./sky";
 import { createWaterfallVisual, type WaterfallVisual } from "./water";
@@ -68,7 +67,6 @@ export class WorldRenderer implements WorldView {
   private readonly districtLayer = new THREE.Group();
   private readonly towerLayer = new THREE.Group();
   private readonly waterfallLayer = new THREE.Group();
-  private readonly linkLayer = new THREE.Group();
   private readonly creatureLayer = new THREE.Group();
   private readonly effectLayer = new THREE.Group();
   private readonly selectionRing: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial>;
@@ -79,7 +77,6 @@ export class WorldRenderer implements WorldView {
   private readonly districtVisuals = new Map<string, DistrictVisual>();
   private readonly towerVisuals = new Map<string, TowerVisual>();
   private readonly waterfallVisuals = new Map<string, WaterfallVisual>();
-  private readonly linkVisuals = new Map<string, LinkVisual>();
   private readonly creatureVisuals = new Map<string, CreatureVisual>();
   private readonly effectVisuals = new Map<string, EffectSlot>();
   private readonly islandModels = new Map<string, Island>();
@@ -87,7 +84,6 @@ export class WorldRenderer implements WorldView {
   private readonly towerModels = new Map<string, Tower>();
   private readonly creatureModels = new Map<string, Creature>();
   private readonly creatureFrames: CreatureVisual[] = [];
-  private readonly linkFrames: LinkVisual[] = [];
   private readonly effectFrames: EffectSlot[] = [];
   private readonly creaturePickEntries: PickEntry[] = [];
   private readonly towerPickEntries: PickEntry[] = [];
@@ -161,7 +157,6 @@ export class WorldRenderer implements WorldView {
       this.districtLayer,
       this.towerLayer,
       this.waterfallLayer,
-      this.linkLayer,
       this.creatureLayer,
       this.effectLayer,
       this.sky.clouds,
@@ -285,17 +280,6 @@ export class WorldRenderer implements WorldView {
       dispose: (visual) => visual.dispose(),
     });
 
-    reconcileById(this.linkVisuals, city.links, {
-      id: (link) => link.id,
-      create: (link) => {
-        const visual = createLinkVisual(link);
-        this.linkLayer.add(visual.mesh);
-        return visual;
-      },
-      update: (visual, link) => visual.update(link),
-      dispose: (visual) => visual.dispose(),
-    });
-
     reconcileById(this.creatureVisuals, city.creatures, {
       id: (creature) => creature.id,
       create: (creature) => {
@@ -307,7 +291,7 @@ export class WorldRenderer implements WorldView {
       dispose: (visual) => visual.dispose(),
     });
 
-    reconcileById(this.effectVisuals, city.incidents, {
+    reconcileById(this.effectVisuals, city.incidents.filter(hasEffect), {
       id: (incident) => incident.id,
       create: (incident) => {
         const visual = createEffectSlot(incident, this.effectLocator, this.assets);
@@ -404,7 +388,6 @@ export class WorldRenderer implements WorldView {
 
     for (const visual of this.effectVisuals.values()) visual.dispose();
     for (const visual of this.creatureVisuals.values()) visual.dispose();
-    for (const visual of this.linkVisuals.values()) visual.dispose();
     for (const visual of this.waterfallVisuals.values()) visual.dispose();
     for (const visual of this.towerVisuals.values()) visual.dispose();
     for (const visual of this.districtVisuals.values()) visual.dispose();
@@ -413,7 +396,6 @@ export class WorldRenderer implements WorldView {
     for (const visual of this.sceneryVisuals.values()) visual.group.removeFromParent();
     this.effectVisuals.clear();
     this.creatureVisuals.clear();
-    this.linkVisuals.clear();
     this.waterfallVisuals.clear();
     this.towerVisuals.clear();
     this.districtVisuals.clear();
@@ -500,10 +482,8 @@ export class WorldRenderer implements WorldView {
 
   private refreshFrameLists(): void {
     this.creatureFrames.length = 0;
-    this.linkFrames.length = 0;
     this.effectFrames.length = 0;
     for (const visual of this.creatureVisuals.values()) this.creatureFrames.push(visual);
-    for (const visual of this.linkVisuals.values()) this.linkFrames.push(visual);
     for (const visual of this.effectVisuals.values()) this.effectFrames.push(visual);
   }
 
@@ -589,7 +569,6 @@ export class WorldRenderer implements WorldView {
       this.assets.waterfallUniforms.time.value = this.ambientTime;
       this.sky.update(delta);
       for (let index = 0; index < this.creatureFrames.length; index += 1) this.creatureFrames[index]?.animate(this.ambientTime);
-      for (let index = 0; index < this.linkFrames.length; index += 1) this.linkFrames[index]?.animate(this.ambientTime);
       for (let index = 0; index < this.effectFrames.length; index += 1) this.effectFrames[index]?.animate(this.ambientTime);
       if (this.selected?.kind === "creature") this.updateSelectionRing();
     }

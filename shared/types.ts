@@ -190,16 +190,6 @@ export interface Tower {
   url?: string;
 }
 
-export interface Link {
-  /** `<towerId>-><districtId>` */
-  id: string;
-  towerId: string;
-  districtId: string;
-  from: Vec2;
-  to: Vec2;
-  broken: boolean;
-}
-
 export interface Bridge {
   id: string;
   from: Vec2;
@@ -207,7 +197,7 @@ export interface Bridge {
 }
 
 export type Severity = "critical" | "error" | "warning";
-export type EffectKind = "fire" | "smoke" | "crowd" | "storm" | "beacon" | "giant";
+export type EffectKind = "fire" | "smoke" | "crowd" | "storm" | "giant";
 
 export interface Incident {
   /** `<ruleId>:<primary target id>`, stable across updates. */
@@ -216,7 +206,8 @@ export interface Incident {
   severity: Severity;
   title: string;
   detail: string;
-  effect: EffectKind;
+  /** How the world shows it; null when it is only listed in Problems. */
+  effect: EffectKind | null;
   targets: { districts: string[]; towers: string[]; creatures: string[] };
   /** Where the camera should look. */
   focus: Vec2;
@@ -230,7 +221,6 @@ export interface CityModel {
   districts: District[];
   creatures: Creature[];
   towers: Tower[];
-  links: Link[];
   bridges: Bridge[];
   /** Sorted critical → error → warning, then title. */
   incidents: Incident[];
