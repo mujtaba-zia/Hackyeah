@@ -116,6 +116,21 @@ npm run check      # typecheck + tests
 npm run build      # production bundle in dist/
 ```
 
+### 3D models
+
+Every building, creature, tree and rock is built by Blender Python scripts in
+[`art/blender/`](art/blender) and exported as one kit, `public/models/kit.glb`.
+The kit is committed, so you only need [Blender](https://www.blender.org/) (tested with 5.2) to
+change it:
+
+```bash
+npm run models                                  # rebuild public/models/kit.glb
+BLENDER=/Applications/Blender.app/Contents/MacOS/Blender npm run models
+```
+
+Add `--previews <folder>` after `--out …` in that command to render a PNG of
+each model from the game camera's angle.
+
 [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) explains how the pieces fit and
 how to add a data source or a new kind of problem.
 [`docs/SPEC.md`](docs/SPEC.md) is the full behavioural specification.
