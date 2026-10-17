@@ -11,3 +11,11 @@ export interface RuleContext {
 }
 
 export type IncidentRule = (context: RuleContext) => Incident[];
+
+/** Names the district that hosts a tower for concise incident copy. */
+export function towerPlaceName(context: RuleContext, tower: Tower): string {
+  if (tower.islandId === "outskirts") return "the outskirts";
+
+  const district = context.districts.find((candidate) => candidate.id === tower.islandId);
+  return district?.name ?? "the outskirts";
+}
