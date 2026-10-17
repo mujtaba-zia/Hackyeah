@@ -16,7 +16,8 @@
     "start": "tsx --env-file-if-exists=.env server/main.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "check": "npm run typecheck && npm run test"
+    "check": "npm run typecheck && npm run test",
+    "models": "${BLENDER:-blender} -b --factory-startup --python art/blender/build_kit.py -- --out public/models/kit.glb"
   },
   "dependencies": {
     "three": "^0.186.1",
