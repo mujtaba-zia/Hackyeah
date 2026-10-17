@@ -1,0 +1,22 @@
+{
+  "repos": [
+    { "id": "mock:ledger", "name": "Ledger", "project": "Finance" }
+  ],
+  "pullRequests": [
+    { "id": "mock:pr:ledger:201", "repoId": "mock:ledger", "number": 201, "title": "Add settlement window", "author": "Jo Park", "draft": false, "ageHours": 40, "reviewers": 2, "verdict": "none", "hasConflicts": false, "checks": "pending" },
+    { "id": "mock:pr:ledger:202", "repoId": "mock:ledger", "number": 202, "title": "Correct fee rounding", "author": "Vik Rao", "draft": false, "ageHours": 38, "reviewers": 1, "verdict": "changesRequested", "hasConflicts": false, "checks": "success" },
+    { "id": "mock:pr:ledger:203", "repoId": "mock:ledger", "number": 203, "title": "Expose transfer notes", "author": "Rosa Mills", "draft": false, "ageHours": 35, "reviewers": 3, "verdict": "none", "hasConflicts": false, "checks": "none" },
+    { "id": "mock:pr:ledger:204", "repoId": "mock:ledger", "number": 204, "title": "Update reconciliation copy", "author": "Ben Wu", "draft": false, "ageHours": 32, "reviewers": 2, "verdict": "waitingOnAuthor", "hasConflicts": false, "checks": "success" },
+    { "id": "mock:pr:ledger:205", "repoId": "mock:ledger", "number": 205, "title": "Index payout filters", "author": "Mae Ortiz", "draft": false, "ageHours": 27, "reviewers": 1, "verdict": "none", "hasConflicts": false, "checks": "success" }
+  ],
+  "pipelines": [
+    {
+      "id": "mock:pipeline:ledger-ci",
+      "name": "Ledger CI",
+      "homeRepoId": "mock:ledger",
+      "coversRepoIds": ["mock:ledger"],
+      "kind": "ci",
+      "runs": [{ "id": "mock:run:ledger:66", "result": "success", "ageHours": 2 }]
+    }
+  ]
+}

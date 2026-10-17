@@ -1,0 +1,55 @@
+{
+  "repos": [
+    { "id": "mock:payments", "name": "Payments", "project": "Harbor" },
+    { "id": "mock:catalog", "name": "Catalog", "project": "Harbor" },
+    { "id": "mock:identity", "name": "Identity", "project": "Northstar" },
+    { "id": "mock:mobile", "name": "Mobile", "project": "Northstar" }
+  ],
+  "pullRequests": [
+    { "id": "mock:pr:payments:104", "repoId": "mock:payments", "number": 104, "title": "Reconcile delayed invoices", "author": "Leah Gomez", "draft": false, "ageHours": 220, "reviewers": 2, "verdict": "none", "hasConflicts": false, "checks": "failure" },
+    { "id": "mock:pr:identity:81", "repoId": "mock:identity", "number": 81, "title": "Add passkey recovery", "author": "Ari Kim", "draft": false, "ageHours": 42, "reviewers": 3, "verdict": "none", "hasConflicts": false, "checks": "pending" },
+    { "id": "mock:pr:identity:82", "repoId": "mock:identity", "number": 82, "title": "Rotate session cookies", "author": "Samir Shah", "draft": false, "ageHours": 36, "reviewers": 2, "verdict": "waitingOnAuthor", "hasConflicts": false, "checks": "success" },
+    { "id": "mock:pr:identity:83", "repoId": "mock:identity", "number": 83, "title": "Audit device approvals", "author": "Mina Holt", "draft": false, "ageHours": 31, "reviewers": 2, "verdict": "changesRequested", "hasConflicts": false, "checks": "success" },
+    { "id": "mock:pr:identity:84", "repoId": "mock:identity", "number": 84, "title": "Tidy access request copy", "author": "Noah Brooks", "draft": false, "ageHours": 29, "reviewers": 1, "verdict": "none", "hasConflicts": false, "checks": "none" },
+    { "id": "mock:pr:identity:85", "repoId": "mock:identity", "number": 85, "title": "Improve audit export", "author": "Priya Das", "draft": false, "ageHours": 27, "reviewers": 2, "verdict": "none", "hasConflicts": false, "checks": "success" },
+    { "id": "mock:pr:catalog:51", "repoId": "mock:catalog", "number": 51, "title": "Group seasonal collections", "author": "Tara Bishop", "draft": true, "ageHours": 12, "reviewers": 0, "verdict": "none", "hasConflicts": false, "checks": "none" },
+    { "id": "mock:pr:catalog:52", "repoId": "mock:catalog", "number": 52, "title": "Refresh search facets", "author": "Eli Turner", "draft": true, "ageHours": 10, "reviewers": 0, "verdict": "none", "hasConflicts": false, "checks": "none" },
+    { "id": "mock:pr:catalog:53", "repoId": "mock:catalog", "number": 53, "title": "Add supplier notes", "author": "Nia Cole", "draft": true, "ageHours": 8, "reviewers": 0, "verdict": "none", "hasConflicts": false, "checks": "none" },
+    { "id": "mock:pr:catalog:54", "repoId": "mock:catalog", "number": 54, "title": "Sort discontinued products", "author": "Owen Lee", "draft": true, "ageHours": 7, "reviewers": 0, "verdict": "none", "hasConflicts": false, "checks": "none" },
+    { "id": "mock:pr:catalog:55", "repoId": "mock:catalog", "number": 55, "title": "Improve category aliases", "author": "Kira Vale", "draft": true, "ageHours": 5, "reviewers": 0, "verdict": "none", "hasConflicts": false, "checks": "none" }
+  ],
+  "pipelines": [
+    {
+      "id": "mock:pipeline:platform-integration",
+      "name": "Platform Integration",
+      "homeRepoId": "mock:payments",
+      "coversRepoIds": ["mock:payments", "mock:catalog"],
+      "kind": "ci",
+      "runs": [
+        { "id": "mock:run:platform:18", "result": "failure", "ageHours": 1 },
+        { "id": "mock:run:platform:17", "result": "success", "ageHours": 30 }
+      ]
+    },
+    {
+      "id": "mock:pipeline:identity-release",
+      "name": "Identity Release",
+      "homeRepoId": "mock:identity",
+      "coversRepoIds": ["mock:identity"],
+      "kind": "release",
+      "runs": [
+        { "id": "mock:run:identity-release:8", "result": "partial", "ageHours": 72 },
+        { "id": "mock:run:identity-release:7", "result": "success", "ageHours": 500 }
+      ]
+    },
+    {
+      "id": "mock:pipeline:mobile-ci",
+      "name": "Mobile CI",
+      "homeRepoId": "mock:mobile",
+      "coversRepoIds": ["mock:mobile"],
+      "kind": "ci",
+      "runs": [
+        { "id": "mock:run:mobile:41", "result": "success", "ageHours": 3 }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "repos": [
+    { "id": "mock:orbit", "name": "Orbit", "project": "Launch" },
+    { "id": "mock:telemetry", "name": "Telemetry", "project": "Launch" },
+    { "id": "mock:mission-control", "name": "Mission Control", "project": "Launch" }
+  ],
+  "pullRequests": [],
+  "pipelines": [
+    {
+      "id": "mock:pipeline:orbit-ci",
+      "name": "Orbit CI",
+      "homeRepoId": "mock:orbit",
+      "coversRepoIds": ["mock:orbit"],
+      "kind": "ci",
+      "runs": [{ "id": "mock:run:orbit:44", "result": "failure", "ageHours": 1 }]
+    },
+    {
+      "id": "mock:pipeline:telemetry-ci",
+      "name": "Telemetry CI",
+      "homeRepoId": "mock:telemetry",
+      "coversRepoIds": ["mock:telemetry"],
+      "kind": "ci",
+      "runs": [{ "id": "mock:run:telemetry:44", "result": "failure", "ageHours": 2 }]
+    },
+    {
+      "id": "mock:pipeline:mission-control-ci",
+      "name": "Mission Control CI",
+      "homeRepoId": "mock:mission-control",
+      "coversRepoIds": ["mock:mission-control"],
+      "kind": "ci",
+      "runs": [{ "id": "mock:run:mission-control:44", "result": "failure", "ageHours": 3 }]
+    }
+  ]
+}

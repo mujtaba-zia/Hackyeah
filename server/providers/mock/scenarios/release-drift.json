@@ -1,0 +1,19 @@
+{
+  "repos": [
+    { "id": "mock:shipyard", "name": "Shipyard", "project": "Harbor" }
+  ],
+  "pullRequests": [],
+  "pipelines": [
+    {
+      "id": "mock:pipeline:shipyard-release",
+      "name": "Shipyard Release",
+      "homeRepoId": "mock:shipyard",
+      "coversRepoIds": ["mock:shipyard"],
+      "kind": "release",
+      "runs": [
+        { "id": "mock:run:shipyard:19", "result": "partial", "ageHours": 48 },
+        { "id": "mock:run:shipyard:18", "result": "success", "ageHours": 480 }
+      ]
+    }
+  ]
+}

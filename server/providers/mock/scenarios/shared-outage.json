@@ -1,0 +1,20 @@
+{
+  "repos": [
+    { "id": "mock:gateway", "name": "Gateway", "project": "Transit" },
+    { "id": "mock:dispatch", "name": "Dispatch", "project": "Transit" }
+  ],
+  "pullRequests": [],
+  "pipelines": [
+    {
+      "id": "mock:pipeline:transit-contract",
+      "name": "Transit Contract Tests",
+      "homeRepoId": "mock:gateway",
+      "coversRepoIds": ["mock:gateway", "mock:dispatch"],
+      "kind": "ci",
+      "runs": [
+        { "id": "mock:run:transit:91", "result": "failure", "ageHours": 1 },
+        { "id": "mock:run:transit:90", "result": "success", "ageHours": 22 }
+      ]
+    }
+  ]
+}

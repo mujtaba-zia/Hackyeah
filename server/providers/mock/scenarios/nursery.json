@@ -1,0 +1,22 @@
+{
+  "repos": [
+    { "id": "mock:studio", "name": "Studio", "project": "Canvas" }
+  ],
+  "pullRequests": [
+    { "id": "mock:pr:studio:301", "repoId": "mock:studio", "number": 301, "title": "Sketch palette presets", "author": "Dani Fox", "draft": true, "ageHours": 12, "reviewers": 0, "verdict": "none", "hasConflicts": false, "checks": "none" },
+    { "id": "mock:pr:studio:302", "repoId": "mock:studio", "number": 302, "title": "Prepare print exports", "author": "Kai West", "draft": true, "ageHours": 10, "reviewers": 0, "verdict": "none", "hasConflicts": false, "checks": "none" },
+    { "id": "mock:pr:studio:303", "repoId": "mock:studio", "number": 303, "title": "Add brand kits", "author": "Zoe Hart", "draft": true, "ageHours": 8, "reviewers": 0, "verdict": "none", "hasConflicts": false, "checks": "none" },
+    { "id": "mock:pr:studio:304", "repoId": "mock:studio", "number": 304, "title": "Review texture uploads", "author": "Pax Green", "draft": true, "ageHours": 6, "reviewers": 0, "verdict": "none", "hasConflicts": false, "checks": "none" },
+    { "id": "mock:pr:studio:305", "repoId": "mock:studio", "number": 305, "title": "Tune poster crop", "author": "Moe Ray", "draft": true, "ageHours": 4, "reviewers": 0, "verdict": "none", "hasConflicts": false, "checks": "none" }
+  ],
+  "pipelines": [
+    {
+      "id": "mock:pipeline:studio-ci",
+      "name": "Studio CI",
+      "homeRepoId": "mock:studio",
+      "coversRepoIds": ["mock:studio"],
+      "kind": "ci",
+      "runs": [{ "id": "mock:run:studio:14", "result": "success", "ageHours": 1 }]
+    }
+  ]
+}

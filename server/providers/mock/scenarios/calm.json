@@ -1,0 +1,27 @@
+{
+  "repos": [
+    { "id": "mock:meadow", "name": "Meadow", "project": "Garden" },
+    { "id": "mock:weather", "name": "Weather", "project": "Garden" }
+  ],
+  "pullRequests": [
+    { "id": "mock:pr:meadow:12", "repoId": "mock:meadow", "number": 12, "title": "Make sunrise colors configurable", "author": "Iris Lane", "draft": false, "ageHours": 3, "reviewers": 1, "verdict": "approved", "hasConflicts": false, "checks": "success" }
+  ],
+  "pipelines": [
+    {
+      "id": "mock:pipeline:meadow-ci",
+      "name": "Meadow CI",
+      "homeRepoId": "mock:meadow",
+      "coversRepoIds": ["mock:meadow"],
+      "kind": "ci",
+      "runs": [{ "id": "mock:run:meadow:32", "result": "success", "ageHours": 2 }]
+    },
+    {
+      "id": "mock:pipeline:weather-ci",
+      "name": "Weather CI",
+      "homeRepoId": "mock:weather",
+      "coversRepoIds": ["mock:weather"],
+      "kind": "ci",
+      "runs": [{ "id": "mock:run:weather:18", "result": "success", "ageHours": 4 }]
+    }
+  ]
+}
