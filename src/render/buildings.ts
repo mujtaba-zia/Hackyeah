@@ -19,36 +19,43 @@ export interface TowerVisual {
   dispose(): void;
 }
 
-function createDistrictBuilding(district: District, assets: RenderAssets): {
-  group: THREE.Group;
-  base: THREE.Mesh<THREE.BoxGeometry, THREE.MeshStandardMaterial>;
-} {
-  const group = new THREE.Group();
-  const base = new THREE.Mesh(assets.hqBaseGeometry, assets.hqMaterials[district.health]);
-  const roof = new THREE.Mesh(assets.hqRoofGeometry, assets.roofMaterial);
-  const window = new THREE.Mesh(assets.hqWindowGeometry, assets.windowMaterial);
-  const secondWindow = new THREE.Mesh(assets.hqWindowGeometry, assets.windowMaterial);
-  base.position.y = 0.65;
-  roof.position.y = 1.8;
-  roof.rotation.y = Math.PI * 0.25;
-  window.position.set(-0.46, 0.72, 0.74);
-  secondWindow.position.set(0.46, 0.72, 0.74);
-  group.add(base, roof, window, secondWindow);
-  group.position.set(district.hq.x, 0, district.hq.z);
-  return { group, base };
+/** The kit models are authored at these sizes; districts use slightly smaller footprints. */
+const HQ_SCALE = 0.85;
+const PLAZA_MODEL_RADIUS = 3;
+const NURSERY_MODEL_RADIUS = 2;
+/** Grass tops sit a hair above y = 0; lift ground pieces so they never z-fight. */
+const GROUND_LIFT = 0.045;
+
+/** Swaps the material on every mesh of a kit model that was authored with `name`. */
+function swapMaterial(model: THREE.Object3D, name: string, material: THREE.Material): void {
+  for (const child of model.children) {
+    if (child instanceof THREE.Mesh && child.name === name) child.material = material;
+  }
+}
+
+function placeGroundPieces(district: District, plaza: THREE.Object3D, nursery: THREE.Object3D): void {
+  plaza.position.set(district.plaza.center.x, GROUND_LIFT, district.plaza.center.z);
+  plaza.scale.setScalar(district.plaza.radius / PLAZA_MODEL_RADIUS);
+  nursery.position.set(district.nursery.center.x, GROUND_LIFT, district.nursery.center.z);
+  nursery.scale.setScalar(district.nursery.radius / NURSERY_MODEL_RADIUS);
 }
 
 export function createDistrictVisual(initial: District, island: Island, assets: RenderAssets): DistrictVisual {
   const root = new THREE.Group();
   root.name = `district:${initial.id}`;
-  const building = createDistrictBuilding(initial, assets);
+  const hq = assets.kit.create("hq", { Accent: assets.accentMaterials[initial.health] });
+  hq.scale.setScalar(HQ_SCALE);
+  hq.position.set(initial.hq.x, GROUND_LIFT, initial.hq.z);
+  const plaza = assets.kit.create("plaza");
+  const nursery = assets.kit.create("nursery");
+  placeGroundPieces(initial, plaza, nursery);
   const label = createTextLabel(initial.name, "#effcff", "rgba(18, 35, 51, 0.78)");
   const pickSurface = new THREE.Mesh(assets.pickSurfaceGeometry, assets.pickMaterial);
   pickSurface.rotation.x = -Math.PI / 2;
   pickSurface.position.set(island.origin.x + island.size.x / 2, 0.08, island.origin.z + island.size.z / 2);
   pickSurface.scale.set(island.size.x * 0.96, island.size.z * 0.96, 1);
   label.sprite.position.set(initial.plaza.center.x, 1.75, island.origin.z + island.size.z - 1.15);
-  root.add(pickSurface, building.group, label.sprite);
+  root.add(pickSurface, hq, plaza, nursery, label.sprite);
   let data = initial;
 
   return {
@@ -62,14 +69,11 @@ export function createDistrictVisual(initial: District, island: Island, assets: 
     },
     update(next: District, nextIsland: Island): void {
       if (next.name !== data.name) label.setText(next.name);
-      if (next.health !== data.health) building.base.material = assets.hqMaterials[next.health];
-      building.group.position.set(next.hq.x, 0, next.hq.z);
+      if (next.health !== data.health) swapMaterial(hq, "Accent", assets.accentMaterials[next.health]);
+      hq.position.set(next.hq.x, GROUND_LIFT, next.hq.z);
+      placeGroundPieces(next, plaza, nursery);
       label.sprite.position.set(next.plaza.center.x, 1.75, nextIsland.origin.z + nextIsland.size.z - 1.15);
-      pickSurface.position.set(
-        nextIsland.origin.x + nextIsland.size.x / 2,
-        0.08,
-        nextIsland.origin.z + nextIsland.size.z / 2,
-      );
+      pickSurface.position.set(nextIsland.origin.x + nextIsland.size.x / 2, 0.08, nextIsland.origin.z + nextIsland.size.z / 2);
       pickSurface.scale.set(nextIsland.size.x * 0.96, nextIsland.size.z * 0.96, 1);
       data = next;
     },
@@ -80,44 +84,30 @@ export function createDistrictVisual(initial: District, island: Island, assets: 
   };
 }
 
-function createCiTower(assets: RenderAssets): THREE.Group {
-  const group = new THREE.Group();
-  const base = new THREE.Mesh(assets.towerBaseGeometry, assets.towerBodyMaterial);
-  const shaft = new THREE.Mesh(assets.ciTowerGeometry, assets.towerBodyMaterial);
-  base.position.y = 0.16;
-  shaft.position.y = 1.87;
-  group.add(base, shaft);
-  return group;
-}
-
-function createReleaseTower(assets: RenderAssets): THREE.Group {
-  const group = new THREE.Group();
-  const base = new THREE.Mesh(assets.towerBaseGeometry, assets.towerReleaseMaterial);
-  const shaft = new THREE.Mesh(assets.releaseTowerGeometry, assets.towerReleaseMaterial);
-  const flag = new THREE.Mesh(assets.flagGeometry, assets.flagMaterial);
-  base.position.y = 0.16;
-  shaft.position.y = 1.35;
-  flag.position.set(0.68, 2.45, 0);
-  group.add(base, shaft, flag);
-  return group;
-}
+/** Where each tower model's light sits and where its name floats, in model units. */
+const TOWER_SHAPE: Record<Tower["kind"], { model: "tower_ci" | "tower_release"; beacon: number; label: number }> = {
+  ci: { model: "tower_ci", beacon: 3.78, label: 5.25 },
+  release: { model: "tower_release", beacon: 3.0, label: 4.0 },
+};
 
 export function createTowerVisual(initial: Tower, assets: RenderAssets): TowerVisual {
   const root = new THREE.Group();
   root.name = `tower:${initial.id}`;
-  const ciTower = createCiTower(assets);
-  const releaseTower = createReleaseTower(assets);
-  const beacon = new THREE.Mesh(assets.beaconGeometry, assets.statusMaterials[initial.status]);
   const beaconLight = new THREE.PointLight(assets.statusColour(initial.status), 1.35, 8, 2);
   const label = createTextLabel(initial.name, "#fff5d5", "rgba(41, 30, 51, 0.82)");
-  ciTower.visible = initial.kind === "ci";
-  releaseTower.visible = initial.kind === "release";
-  beacon.position.y = initial.kind === "ci" ? 3.67 : 2.62;
-  beaconLight.position.copy(beacon.position);
-  label.sprite.position.set(0, initial.kind === "ci" ? 4.55 : 3.5, 0);
   label.sprite.visible = false;
-  root.position.set(initial.position.x, 0, initial.position.z);
-  root.add(ciTower, releaseTower, beacon, beaconLight, label.sprite);
+  root.add(beaconLight, label.sprite);
+  let model = assets.kit.create(TOWER_SHAPE[initial.kind].model, { Beacon: assets.beaconMaterials[initial.status] });
+  root.add(model);
+
+  function shape(tower: Tower): void {
+    const { beacon, label: labelHeight } = TOWER_SHAPE[tower.kind];
+    beaconLight.position.set(0, beacon, 0);
+    label.sprite.position.set(0, labelHeight, 0);
+  }
+
+  shape(initial);
+  root.position.set(initial.position.x, 0.045, initial.position.z);
   let data = initial;
 
   return {
@@ -131,17 +121,15 @@ export function createTowerVisual(initial: Tower, assets: RenderAssets): TowerVi
     update(next: Tower): void {
       if (next.name !== data.name) label.setText(next.name);
       if (next.kind !== data.kind) {
-        ciTower.visible = next.kind === "ci";
-        releaseTower.visible = next.kind === "release";
-        beacon.position.y = next.kind === "ci" ? 3.67 : 2.62;
-        beaconLight.position.copy(beacon.position);
-        label.sprite.position.y = next.kind === "ci" ? 4.55 : 3.5;
+        root.remove(model);
+        model = assets.kit.create(TOWER_SHAPE[next.kind].model, { Beacon: assets.beaconMaterials[next.status] });
+        root.add(model);
+        shape(next);
+      } else if (next.status !== data.status) {
+        swapMaterial(model, "Beacon", assets.beaconMaterials[next.status]);
       }
-      if (next.status !== data.status) {
-        beacon.material = assets.statusMaterials[next.status];
-        beaconLight.color.setHex(assets.statusColour(next.status));
-      }
-      root.position.set(next.position.x, 0, next.position.z);
+      if (next.status !== data.status) beaconLight.color.setHex(assets.statusColour(next.status));
+      root.position.set(next.position.x, 0.045, next.position.z);
       data = next;
     },
     showName(show: boolean): void {

@@ -2,7 +2,7 @@ import "./styles.css";
 import { SOCKET_PATH } from "../shared/protocol";
 import { connectServer, socketUrl } from "./app/socket";
 import { createStore, reconcileSelection } from "./app/store";
-import { createWorldView, type WorldView } from "./render/index";
+import { createWorldView, loadModelKit, type WorldView } from "./render/index";
 import type { HudActions } from "./ui/actions";
 import { copy } from "./ui/copy";
 import { mountDetail } from "./ui/detail";
@@ -43,18 +43,30 @@ const actions: HudActions = {
   },
 };
 
-try {
-  view = createWorldView(canvas, {
-    onPick: (target) => actions.select(target),
-  });
-} catch {
-  store.set({ webgl: false });
-  canvas.hidden = true;
-  requireElement("webgl-note", HTMLElement).textContent = copy.noWebgl;
-}
-
 const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
-view?.setReducedMotion(motion.matches);
+const webglNote = requireElement("webgl-note", HTMLElement);
+
+// The 3D view waits for the model kit; the HUD and live data work meanwhile.
+loadModelKit(`${import.meta.env.BASE_URL}models/kit.glb`).then(
+  (kit) => {
+    try {
+      view = createWorldView(canvas, { kit, onPick: (target) => actions.select(target) });
+    } catch {
+      store.set({ webgl: false });
+      canvas.hidden = true;
+      webglNote.textContent = copy.noWebgl;
+      return;
+    }
+    view.setReducedMotion(motion.matches);
+    const { server, selection } = store.get();
+    if (server?.city) view.update(server.city);
+    view.select(selection);
+  },
+  () => {
+    canvas.hidden = true;
+    webglNote.textContent = copy.modelsFailed;
+  },
+);
 motion.addEventListener("change", () => view?.setReducedMotion(motion.matches));
 window.addEventListener("resize", () => view?.resize());
 

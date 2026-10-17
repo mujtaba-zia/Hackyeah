@@ -98,12 +98,15 @@ Incidents are sorted critical → error → warning, then by title. Incident ids
 ## Layout (deterministic, pure)
 
 - Same input → same world, byte for byte. Use a seeded string hash, never `Math.random`, in core.
-- Districts sorted by name, placed on a grid `cols = ceil(sqrt(n))`, each island 14×14 units, 6-unit gaps.
+- Districts sorted by name, placed on a grid `cols = ceil(sqrt(n))`, each island 16×16 units, 6-unit gaps.
 - Empty grid cells become **filler** islands (scenery only). There is always one
   **Outskirts** island (id `outskirts`) placed after the grid for towers without a watched home.
 - Wooden **bridges** connect horizontally/vertically adjacent islands.
-- Each district has fixed sub-areas: HQ (back corner), plaza (centre), nursery (front corner), tower row (side edge).
-- Creature home positions are hashed inside their zone and never overlap the HQ/tower row.
+- Each district is laid out around the island centre (the camera looks from +x/+z): the plaza in the
+  middle (radius 2.6), the HQ at the back so it never hides creatures, the nursery to the right
+  (radius 1.5), and pipeline towers on rings to the left and back. Up to 25 towers per island get
+  their own non-overlapping slot; everything stays inside the island's rounded outline.
+- Creature home positions are hashed inside their zone.
 
 ## The world (renderer)
 
@@ -114,12 +117,19 @@ Incidents are sorted critical → error → warning, then by title. Incident ids
 - **Sky**: vertical gradient background with drifting clouds **below** the islands (decorative, not pickable).
 - **Waterfalls**: at most 3 in the world, falling off camera-facing exterior island edges
   that are not blocked by a bridge. Animated with a single time uniform. Mist at the base.
-- **Scenery**: procedural low-poly trees and rocks on free ground (instanced), seeded.
-- **HQ**: a building per district, tinted by district health.
-- **Towers**: CI towers are tall and slim; release towers are wider with a flag. A beacon light shows status colour.
-- **Creatures**: billboard sprites drawn procedurally on canvas (no image files). Body colour by mood;
-  eggs are egg-shaped and wobble. Creatures wander slowly around their home position.
-  Check overlay icon floats above.
+- **Models**: every building, creature and piece of scenery is a real low-poly model, built
+  from Blender Python scripts in `art/blender/` and exported to `public/models/kit.glb`
+  (`npm run models`). The app ships the exported kit, so Blender is only needed to change it.
+  Materials named `Accent`, `Beacon` and `Body` are recoloured at runtime.
+- **Scenery**: pine, round and birch trees and three mossy boulders on free ground (instanced), seeded.
+- **HQ**: a timber-framed town hall with a shingled roof and a stone corner tower; the spire,
+  banner and flag take the district's health colour.
+- **Towers**: CI pipelines are lighthouses fed by brass pipes; releases are harbour keeps with a
+  brazier, crates and a crane. The lantern or brazier glows in the latest run's status colour.
+- **Plaza and nursery**: a cobbled square with lamps and benches; a fenced hay paddock.
+- **Creatures**: round 3D critters coloured by mood that waddle around their home spot facing
+  where they walk; drafts are speckled eggs in straw nests that wobble. A check badge
+  (hourglass, cross) floats above.
 - **Links**: arcs from tower to covered districts. Calm cyan when fine, pulsing red when broken.
 - **Effects**: fire+smoke particles (`fire`), grey smoke (`smoke`), a ring + tight cluster (`crowd`),
   a dark storm cloud with rain and red tint over the district (`storm`), a vertical light pillar (`beacon`),

@@ -10,3 +10,6 @@ coverage/
 .env.*
 !.env.example
 isles.config.json
+
+# Python bytecode from Blender runs
+__pycache__/
