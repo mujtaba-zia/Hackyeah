@@ -273,5 +273,6 @@ export interface ClientState {
 export type MockOp =
   | { kind: "setPipelineResult"; pipelineId: string; result: RunResult }
   | { kind: "addPullRequest"; repoId: string; draft: boolean }
+  | { kind: "addPipeline"; repoId: string; release: boolean }
   | { kind: "agePullRequests"; days: number }
   | { kind: "reset" };
