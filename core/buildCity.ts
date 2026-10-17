@@ -24,7 +24,7 @@ import { hashToUnit } from "./hash";
 import { RULE_CATALOG } from "./rules/catalog";
 import { selectRepos } from "./selectRepos";
 
-const ISLAND_SIZE = 22;
+const ISLAND_SIZE = 30;
 const ISLAND_GAP = 6;
 const ISLAND_SPACING = ISLAND_SIZE + ISLAND_GAP;
 const MILLIS_PER_HOUR = 60 * 60 * 1000;
@@ -40,45 +40,55 @@ const NURSERY_OFFSET = { x: 4.8, z: -4.8 };
 
 /** Half-width of the HQ model as drawn (the renderer's HQ scale times its footprint). */
 export const HQ_FOOTPRINT = 1.7;
-/** A tower's own footprint radius, and the minimum distance between two tower centres. */
-export const TOWER_FOOTPRINT = 0.6;
-const TOWER_SPACING = 1.3;
+/** A tower's own footprint radius (the keep's plinth; its crane reaches a little further). */
+export const TOWER_FOOTPRINT = 0.85;
 /** Room the nursery's fence and hay bales take beyond its radius. */
 const NURSERY_MARGIN = 0.6;
-const TOWER_RING_RADII = [4.8, 6.1, 7.4, 8.7] as const;
-/** Degrees between the camera and the plaza; towers here would hide the square. */
-const VIEW_SECTOR = { from: 10, to: 80 } as const;
-/** Towers fill outwards from the inner ring, each ring starting from this angle (back-left). */
-const PREFERRED_ANGLE = 150;
 
-function angularDistance(a: number, b: number): number {
-  const difference = Math.abs(a - b) % 360;
-  return difference > 180 ? 360 - difference : difference;
-}
+// Tower spots sit in rows that face the camera, so they spread across the screen
+// instead of hiding behind each other. `across` runs left-right on screen,
+// `depth` towards the camera; each row is shifted half a spot so a tower behind
+// shows between the two in front of it.
+const ROW_SPACING_ACROSS = 3.2;
+const ROW_SPACING_DEPTH = 2.4;
+/** Closest any two tower centres get (diagonal neighbours on adjacent rows). */
+export const TOWER_SPACING = Math.hypot(ROW_SPACING_ACROSS / 2, ROW_SPACING_DEPTH);
+/** Keep the strip between the camera and the plaza clear, up to this depth in front of it. */
+const VIEW_CORRIDOR = { halfWidth: 3.6, clearBeyond: 8.5 } as const;
+/** Towers fill outwards from here (back-left of the plaza). */
+const FIRST_TOWER = { x: -4.4, z: 2.6 };
+/** How far from the island centre a tower may stand (inside the rounded outline). */
+const TOWER_REACH = (ISLAND_SIZE / 2) * 0.88 - TOWER_FOOTPRINT - 0.15;
 
 /**
- * Every tower spot on a district island, in fill order, relative to its centre.
- * Spots sit on rings `TOWER_SPACING` apart, never in the camera's view of the
- * plaza and never on the HQ or the nursery.
+ * Every tower spot on a district island, in fill order, relative to its centre:
+ * a staggered grid of camera-facing rows, kept off the plaza, the HQ, the
+ * nursery and the camera's view of the plaza.
  */
-export const TOWER_SLOTS: readonly Vec2[] = TOWER_RING_RADII.flatMap((radius) => {
-  const count = Math.floor((2 * Math.PI * radius) / TOWER_SPACING);
-  const ring: { angle: number; slot: Vec2 }[] = [];
-  for (let index = 0; index < count; index += 1) {
-    const angle = (360 * index) / count;
-    if (angle >= VIEW_SECTOR.from && angle <= VIEW_SECTOR.to) continue;
-    const radians = (angle * Math.PI) / 180;
-    const slot = { x: Math.cos(radians) * radius, z: Math.sin(radians) * radius };
-    if (Math.hypot(slot.x - HQ_OFFSET.x, slot.z - HQ_OFFSET.z) < HQ_FOOTPRINT + TOWER_FOOTPRINT + 0.3) continue;
-    if (Math.hypot(slot.x - NURSERY_OFFSET.x, slot.z - NURSERY_OFFSET.z) < NURSERY_RADIUS + NURSERY_MARGIN + TOWER_FOOTPRINT) {
-      continue;
+export const TOWER_SLOTS: readonly Vec2[] = (() => {
+  const spots: Vec2[] = [];
+  const rows = Math.ceil(TOWER_REACH / ROW_SPACING_DEPTH);
+  const columns = Math.ceil(TOWER_REACH / ROW_SPACING_ACROSS) + 1;
+  for (let row = -rows; row <= rows; row += 1) {
+    const depth = row * ROW_SPACING_DEPTH;
+    const shift = row % 2 === 0 ? 0 : ROW_SPACING_ACROSS / 2;
+    for (let column = -columns; column <= columns; column += 1) {
+      const across = column * ROW_SPACING_ACROSS + shift;
+      // across = (x - z) / sqrt 2, depth = (x + z) / sqrt 2
+      const spot = { x: (across + depth) / Math.SQRT2, z: (depth - across) / Math.SQRT2 };
+      if (Math.hypot(spot.x, spot.z) > TOWER_REACH) continue;
+      if (Math.hypot(spot.x, spot.z) < PLAZA_RADIUS + 0.4 + TOWER_FOOTPRINT) continue;
+      if (depth > 0 && depth < VIEW_CORRIDOR.clearBeyond && Math.abs(across) < VIEW_CORRIDOR.halfWidth) continue;
+      if (Math.hypot(spot.x - HQ_OFFSET.x, spot.z - HQ_OFFSET.z) < HQ_FOOTPRINT + TOWER_FOOTPRINT + 0.3) continue;
+      if (Math.hypot(spot.x - NURSERY_OFFSET.x, spot.z - NURSERY_OFFSET.z) < NURSERY_RADIUS + NURSERY_MARGIN + TOWER_FOOTPRINT) {
+        continue;
+      }
+      spots.push(spot);
     }
-    ring.push({ angle, slot });
   }
-  return ring
-    .sort((left, right) => angularDistance(left.angle, PREFERRED_ANGLE) - angularDistance(right.angle, PREFERRED_ANGLE) || left.angle - right.angle)
-    .map(({ slot }) => slot);
-});
+  const distance = (spot: Vec2) => Math.hypot(spot.x - FIRST_TOWER.x, spot.z - FIRST_TOWER.z);
+  return spots.sort((left, right) => distance(left) - distance(right) || left.x - right.x || left.z - right.z);
+})();
 
 const SEVERITY_ORDER: Record<Severity, number> = {
   critical: 0,

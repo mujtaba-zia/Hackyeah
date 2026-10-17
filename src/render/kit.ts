@@ -5,7 +5,13 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 export const KIT_MODELS = [
   "hq",
   "tower_ci",
+  "tower_ci_foundation",
+  "tower_ci_building",
+  "tower_ci_broken",
   "tower_release",
+  "tower_release_foundation",
+  "tower_release_building",
+  "tower_release_broken",
   "plaza",
   "nursery",
   "creature",
@@ -40,7 +46,26 @@ export class ModelKit {
     return this.models[model];
   }
 
-  /** The kit's own material with this name, used as the template for recoloured copies. */
+  /** Highest point of a model, in model units. */
+  top(model: KitModel): number {
+    return this.bounds(model, () => true).max.y;
+  }
+
+  /** Centre of a model's glowing `Beacon` parts (lantern, brazier, work lamps, embers). */
+  beaconCentre(model: KitModel): THREE.Vector3 {
+    return this.bounds(model, (part) => part.material.name === "Beacon").getCenter(new THREE.Vector3());
+  }
+
+  private bounds(model: KitModel, include: (part: KitPart) => boolean): THREE.Box3 {
+    const box = new THREE.Box3();
+    for (const part of this.models[model]) {
+      if (!include(part)) continue;
+      part.geometry.computeBoundingBox();
+      if (part.geometry.boundingBox) box.union(part.geometry.boundingBox);
+    }
+    if (box.isEmpty()) throw new Error(`model-kit: ${model} has no matching parts`);
+    return box;
+  }
   template(model: KitModel, name: RecolouredMaterial): THREE.Material {
     const part = this.models[model].find((candidate) => candidate.material.name === name);
     if (!part) throw new Error(`model-kit: ${model} has no ${name} material`);

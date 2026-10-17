@@ -2,6 +2,8 @@ import { readFileSync } from "node:fs";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { describe, expect, it } from "vitest";
+import type { RunResult } from "../../shared/types";
+import { TOWER_MODELS, TOWER_STAGE } from "../../src/render/buildings";
 import { KIT_MODELS, kitFromScene } from "../../src/render/kit";
 
 function namedMaterial(name: string): THREE.MeshStandardMaterial {
@@ -61,5 +63,21 @@ describe("shipped kit", () => {
     expect(kit.template("tower_release", "Beacon").name).toBe("Beacon");
     expect(kit.template("creature", "Body").name).toBe("Body");
     expect(kit.template("egg", "Body").name).toBe("Body");
+  });
+
+  it("gives every pipeline status a tower stage whose light shows the status colour", async () => {
+    const file = readFileSync(new URL("../../public/models/kit.glb", import.meta.url));
+    const buffer = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength);
+    const kit = kitFromScene((await new GLTFLoader().parseAsync(buffer, "")).scene);
+    const built = kit.top("tower_ci");
+    for (const status of Object.keys(TOWER_STAGE) as RunResult[]) {
+      for (const kind of ["ci", "release"] as const) {
+        expect(kit.template(TOWER_MODELS[kind][TOWER_STAGE[status]], "Beacon").name).toBe("Beacon");
+      }
+    }
+    // Under construction and broken towers read as shorter than a finished one.
+    expect(kit.top("tower_ci_building")).toBeLessThan(built);
+    expect(kit.top("tower_ci_broken")).toBeLessThan(built * 0.6);
+    expect(kit.top("tower_ci_foundation")).toBeLessThan(built * 0.35);
   });
 });

@@ -41,6 +41,17 @@ export const copy = {
   hoursAgo: (hours: number) => (hours < 48 ? `${Math.round(hours)} h old` : `${Math.round(hours / 24)} days old`),
 } as const;
 
+/** Legend wording for pipelines: the status, and what its tower looks like. */
+export const pipelineLegendLabel: Record<RunResult, string> = {
+  success: "Passing · built",
+  partial: "Partial · built",
+  failure: "Failing · broken",
+  running: "Running · being built",
+  queued: "Queued · foundations",
+  cancelled: "Cancelled · foundations",
+  none: "No runs · foundations",
+};
+
 export const providerLabel: Record<ProviderKind, string> = {
   mock: "Mock",
   azure: "Azure DevOps",

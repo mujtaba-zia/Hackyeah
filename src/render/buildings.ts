@@ -1,6 +1,7 @@
 import * as THREE from "three";
-import type { District, Island, Tower } from "../../shared/types";
+import type { District, Island, RunResult, Tower } from "../../shared/types";
 import type { RenderAssets } from "./assets";
+import type { KitModel } from "./kit";
 import { createTextLabel } from "./labels";
 
 export interface DistrictVisual {
@@ -84,10 +85,31 @@ export function createDistrictVisual(initial: District, island: Island, assets: 
   };
 }
 
-/** Where each tower model's light sits and where its name floats, in model units. */
-const TOWER_SHAPE: Record<Tower["kind"], { model: "tower_ci" | "tower_release"; beacon: number; label: number }> = {
-  ci: { model: "tower_ci", beacon: 3.78, label: 5.25 },
-  release: { model: "tower_release", beacon: 3.0, label: 4.0 },
+export type TowerStage = "foundation" | "building" | "built" | "broken";
+
+/**
+ * A pipeline's tower is built by its runs: waiting or never run shows the
+ * foundations, a running pipeline is under construction, a passing one is
+ * finished, and a failing one lies broken.
+ */
+export const TOWER_STAGE: Record<RunResult, TowerStage> = {
+  none: "foundation",
+  queued: "foundation",
+  cancelled: "foundation",
+  running: "building",
+  success: "built",
+  partial: "built",
+  failure: "broken",
+};
+
+export const TOWER_MODELS: Record<Tower["kind"], Record<TowerStage, KitModel>> = {
+  ci: { foundation: "tower_ci_foundation", building: "tower_ci_building", built: "tower_ci", broken: "tower_ci_broken" },
+  release: {
+    foundation: "tower_release_foundation",
+    building: "tower_release_building",
+    built: "tower_release",
+    broken: "tower_release_broken",
+  },
 };
 
 export function createTowerVisual(initial: Tower, assets: RenderAssets): TowerVisual {
@@ -97,16 +119,17 @@ export function createTowerVisual(initial: Tower, assets: RenderAssets): TowerVi
   const label = createTextLabel(initial.name, "#fff5d5", "rgba(41, 30, 51, 0.82)");
   label.sprite.visible = false;
   root.add(beaconLight, label.sprite);
-  let model = assets.kit.create(TOWER_SHAPE[initial.kind].model, { Beacon: assets.beaconMaterials[initial.status] });
+  let modelName = TOWER_MODELS[initial.kind][TOWER_STAGE[initial.status]];
+  let model = assets.kit.create(modelName, { Beacon: assets.beaconMaterials[initial.status] });
   root.add(model);
 
-  function shape(tower: Tower): void {
-    const { beacon, label: labelHeight } = TOWER_SHAPE[tower.kind];
-    beaconLight.position.set(0, beacon, 0);
-    label.sprite.position.set(0, labelHeight, 0);
+  /** Light and name follow the model: the lantern on a finished tower, embers in a broken one. */
+  function placeLightAndLabel(): void {
+    beaconLight.position.copy(assets.kit.beaconCentre(modelName));
+    label.sprite.position.set(0, assets.kit.top(modelName) + 0.45, 0);
   }
 
-  shape(initial);
+  placeLightAndLabel();
   root.position.set(initial.position.x, 0.045, initial.position.z);
   let data = initial;
 
@@ -120,11 +143,13 @@ export function createTowerVisual(initial: Tower, assets: RenderAssets): TowerVi
     },
     update(next: Tower): void {
       if (next.name !== data.name) label.setText(next.name);
-      if (next.kind !== data.kind) {
+      const nextModel = TOWER_MODELS[next.kind][TOWER_STAGE[next.status]];
+      if (nextModel !== modelName) {
         root.remove(model);
-        model = assets.kit.create(TOWER_SHAPE[next.kind].model, { Beacon: assets.beaconMaterials[next.status] });
+        modelName = nextModel;
+        model = assets.kit.create(modelName, { Beacon: assets.beaconMaterials[next.status] });
         root.add(model);
-        shape(next);
+        placeLightAndLabel();
       } else if (next.status !== data.status) {
         swapMaterial(model, "Beacon", assets.beaconMaterials[next.status]);
       }

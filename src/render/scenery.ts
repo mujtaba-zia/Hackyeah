@@ -56,7 +56,7 @@ export function isSceneryPlacementFree(
 
   for (let index = 0; index < reservations.towerPositions.length; index += 1) {
     const tower = reservations.towerPositions[index];
-    if (tower && !hasClearance(placement, tower, 1.65)) return false;
+    if (tower && !hasClearance(placement, tower, 2.4)) return false;
   }
   return true;
 }
@@ -67,7 +67,7 @@ export function isSceneryPlacementFree(
  */
 export function placeScenery(island: Island, reservations: SceneryReservations): SceneryPlacement[] {
   const placements: SceneryPlacement[] = [];
-  const target = island.kind === "filler" ? 18 : 26;
+  const target = island.kind === "filler" ? 30 : 42;
   const attempts = target * 8;
 
   for (let index = 0; index < attempts && placements.length < target; index += 1) {
