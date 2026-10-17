@@ -1,4 +1,4 @@
-"""District headquarters and pipeline towers."""
+"""District headquarters."""
 
 import math
 
@@ -194,90 +194,4 @@ def town_hall(seed=11):
     m.box((0.46, 0.03, 0.82), (tx, ty - 0.535, 3.12), "Accent")
     m.prism([(-0.23, 0), (0.23, 0), (0, 0.18)], 0.03, (tx, ty - 0.535, 2.71), "Accent", rot=(math.pi, 0, 0))
     m.ico(0.07, (tx, ty - 0.56, 3.2), "Brass", subdivisions=1, scale=(1, 0.4, 1))
-    return m.build()
-
-
-def ci_tower(seed=21):
-    """Slim lighthouse-like pipeline tower; the lantern glass is the status beacon."""
-    m = Model("tower_ci", seed)
-    m.cylinder(0.64, 0.6, 0.4, (0, 0, 0), "StoneDark", segments=8, bevel=0.03)
-    m.cylinder(0.5, 0.37, 3.0, (0, 0, 0.4), "Stone", segments=8)
-    for z, r in ((1.2, 0.47), (2.2, 0.43), (3.1, 0.39)):
-        m.cylinder(r + 0.03, r + 0.02, 0.1, (0, 0, z), "Metal", segments=8)
-    for z in (1.6, 2.6):
-        m.box((0.1, 0.06, 0.32), (0, -0.44 + (z - 1.6) * 0.04, z), "Glass")
-        m.box((0.16, 0.06, 0.04), (0, -0.45 + (z - 1.6) * 0.04, z + 0.19), "StoneLight")
-    # Small arched door.
-    m.box((0.3, 0.08, 0.45), (0, -0.55, 0.62), "Wood")
-    m.cylinder(0.15, 0.15, 0.08, (0, -0.51, 0.85), "Wood", segments=10, rot=(math.pi / 2, 0, 0))
-    m.box((0.4, 0.06, 0.08), (0, -0.6, 0.42), "StoneLight")
-    # The pipeline: pipes feeding the tower, with flanges and a valve wheel.
-    m.cylinder(0.065, 0.065, 1.35, (0.52, 0.1, 0.25), "Brass", segments=8)
-    m.ico(0.085, (0.52, 0.1, 1.62), "Brass", subdivisions=1)
-    m.cylinder(0.065, 0.065, 0.12, (0.52, 0.1, 1.62), "Brass", segments=8, rot=(0, -math.pi / 2, 0))
-    for z in (0.55, 1.1):
-        m.cylinder(0.09, 0.09, 0.05, (0.52, 0.1, z), "Metal", segments=8)
-    m.cylinder(0.075, 0.075, 0.95, (0.5, 0.1, 0.25), "Brass", segments=8, rot=(0, math.pi / 2, 0))
-    m.ico(0.09, (0.52, 0.1, 0.25), "Brass", subdivisions=1)
-    m.cylinder(0.11, 0.11, 0.05, (1.2, 0.1, 0.25), "Metal", segments=8, rot=(0, math.pi / 2, 0))
-    m.torus(0.13, 0.018, (0.66, 0.1, 0.9), "Flower", segments=12, sides=5, rot=(0, math.pi / 2, 0))
-    m.box((0.02, 0.24, 0.02), (0.66, 0.1, 0.9), "Metal")
-    m.box((0.02, 0.02, 0.24), (0.66, 0.1, 0.9), "Metal")
-    # Gallery, lantern and roof.
-    m.cylinder(0.6, 0.6, 0.1, (0, 0, 3.4), "StoneLight", segments=12, bevel=0.015)
-    for i in range(12):
-        a = i / 12 * math.tau
-        m.cylinder(0.018, 0.018, 0.26, (math.cos(a) * 0.55, math.sin(a) * 0.55, 3.5), "Metal", segments=5)
-    m.torus(0.55, 0.018, (0, 0, 3.76), "Metal", segments=20, sides=5)
-    m.cylinder(0.3, 0.3, 0.55, (0, 0, 3.5), "Beacon", segments=8)
-    for i in range(8):
-        a = (i + 0.5) / 8 * math.tau
-        m.box((0.04, 0.04, 0.58), (math.cos(a) * 0.3, math.sin(a) * 0.3, 3.78), "Metal")
-    m.cylinder(0.36, 0.36, 0.06, (0, 0, 4.04), "Metal", segments=8)
-    m.cylinder(0.42, 0.0, 0.62, (0, 0, 4.1), "Roof", segments=8, bevel=0.01)
-    m.cylinder(0.02, 0.01, 0.25, (0, 0, 4.68), "Brass", segments=5)
-    m.ico(0.05, (0, 0, 4.76), "Brass", subdivisions=1)
-    return m.build()
-
-
-def release_tower(seed=31):
-    """Wide harbour keep: a brazier beacon on the battlements, crates and a crane for shipping."""
-    m = Model("tower_release", seed)
-    m.cylinder(0.88, 0.85, 0.3, (0, 0, 0), "StoneDark", segments=14, bevel=0.03)
-    m.cylinder(0.74, 0.7, 1.95, (0, 0, 0.3), "Stone", segments=14)
-    for z in (0.75, 1.2, 1.65):
-        m.cylinder(0.76, 0.75, 0.06, (0, 0, z), "StoneDark", segments=14)
-    m.cylinder(0.82, 0.82, 0.22, (0, 0, 2.25), "StoneLight", segments=14, bevel=0.02)
-    for i in range(10):
-        a = (i + 0.5) / 10 * math.tau
-        m.box((0.24, 0.18, 0.26), (math.cos(a) * 0.74, math.sin(a) * 0.74, 2.6), "StoneLight", rot=(0, 0, a), bevel=0.015)
-    # Gate.
-    m.box((0.56, 0.1, 0.72), (0, -0.7, 0.3 + 0.36), "Wood")
-    m.cylinder(0.28, 0.28, 0.1, (0, -0.66, 1.02), "Wood", segments=14, rot=(math.pi / 2, 0, 0))
-    for z in (0.5, 0.85):
-        m.box((0.6, 0.11, 0.05), (0, -0.71, z), "Metal")
-    m.cylinder(0.34, 0.34, 0.08, (0, -0.64, 1.02), "StoneLight", segments=14, rot=(math.pi / 2, 0, 0))
-    for a, z in ((-0.6, 1.55), (0.9, 1.4)):
-        x, y = math.sin(a) * 0.72, -math.cos(a) * 0.72
-        m.box((0.14, 0.06, 0.3), (x, y, z), "Glass", rot=(0, 0, a))
-    # Brazier beacon on the roof.
-    m.cylinder(0.12, 0.1, 0.35, (0, 0, 2.36), "Metal", segments=8)
-    m.cylinder(0.18, 0.34, 0.24, (0, 0, 2.7), "Metal", segments=10)
-    m.ico(0.26, (0, 0, 3.0), "Beacon", subdivisions=1, scale=(1, 1, 1.5), jitter=0.04)
-    # Flag.
-    m.cylinder(0.03, 0.025, 1.3, (-0.5, 0.45, 2.36), "Metal", segments=6)
-    for i in range(4):
-        m.box((0.16, 0.02, 0.34), (-0.42 + i * 0.15, 0.45, 3.45 - 0.02 * i), "Flag", rot=(0, 0, 0.15 * math.sin(i * 1.9)))
-    # Crane and crates on the quay side.
-    m.box((0.12, 0.12, 2.0), (0.95, 0.35, 1.0), "Wood", bevel=0.01)
-    m.box((1.0, 0.1, 0.1), (1.35, 0.35, 1.95), "Wood", rot=(0, -0.25, 0), bevel=0.01)
-    m.box((0.06, 0.06, 0.55), (0.95, 0.35, 1.65), "Wood", rot=(0, 0.6, 0))
-    m.cylinder(0.01, 0.01, 0.9, (1.78, 0.35, 1.18), "Dark", segments=4)
-    m.box((0.3, 0.3, 0.3), (1.78, 0.35, 1.0), "Wood", bevel=0.02)
-    for (x, y, s) in ((1.2, -0.25, 0.36), (1.5, -0.45, 0.3), (1.25, -0.6, 0.26)):
-        m.box((s, s, s), (x, y, s / 2), "Wood", rot=(0, 0, m.rng.uniform(-0.3, 0.3)), bevel=0.02)
-        m.box((s + 0.01, s * 0.15, s + 0.01), (x, y, s / 2), "WoodDark", rot=(0, 0, 0))
-    m.cylinder(0.16, 0.16, 0.4, (1.55, 0.1, 0), "WoodDark", segments=10)
-    m.torus(0.16, 0.02, (1.55, 0.1, 0.12), "Metal", segments=12, sides=4)
-    m.torus(0.16, 0.02, (1.55, 0.1, 0.3), "Metal", segments=12, sides=4)
     return m.build()
