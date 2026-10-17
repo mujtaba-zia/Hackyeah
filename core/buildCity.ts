@@ -24,13 +24,51 @@ import { hashToUnit } from "./hash";
 import { RULE_CATALOG } from "./rules/catalog";
 import { selectRepos } from "./selectRepos";
 
-const ISLAND_SIZE = 14;
+const ISLAND_SIZE = 16;
 const ISLAND_GAP = 6;
 const ISLAND_SPACING = ISLAND_SIZE + ISLAND_GAP;
 const MILLIS_PER_HOUR = 60 * 60 * 1000;
-const TOWER_ROW_X_OFFSET = 1.25;
-const TOWER_ROW_Z_OFFSET = 1;
-const TOWER_ROW_LENGTH = 12;
+
+// District layout, relative to the island centre. The game camera looks from
+// +x/+z, so angles (atan2 of z over x) of 45° face the viewer and 225° face away.
+// The plaza sits in the middle, the HQ stands at the back where it never hides
+// creatures, the nursery is to the right, and towers ring the left and back.
+const PLAZA_RADIUS = 2.6;
+const NURSERY_RADIUS = 1.5;
+const HQ_OFFSET = { x: -3.5, z: -3.5 };
+const NURSERY_OFFSET = { x: 3.55, z: -3.55 };
+
+interface TowerRing {
+  radius: number;
+  from: number;
+  to: number;
+  /** Preferred angle; the first towers stand closest to it. */
+  centre: number;
+  count: number;
+}
+
+const TOWER_RINGS: readonly TowerRing[] = [
+  { radius: 5.4, from: 95, to: 200, centre: 150, count: 9 },
+  { radius: 5.4, from: 250, to: 284, centre: 267, count: 3 },
+  { radius: 4.0, from: 110, to: 190, centre: 150, count: 5 },
+  // Offset by half a step from the first ring so neighbours on the two rings stay apart.
+  { radius: 6.35, from: 95 + 105 / 16, to: 200 - 105 / 16, centre: 150, count: 8 },
+];
+
+/** Tower slots around the island centre, in fill order. */
+const TOWER_SLOTS: readonly Vec2[] = TOWER_RINGS.flatMap((ring) => {
+  const slots: { angle: number; distance: number }[] = [];
+  for (let index = 0; index < ring.count; index += 1) {
+    const angle = ring.from + ((ring.to - ring.from) * index) / Math.max(1, ring.count - 1);
+    slots.push({ angle, distance: Math.abs(angle - ring.centre) });
+  }
+  return slots
+    .sort((left, right) => left.distance - right.distance || left.angle - right.angle)
+    .map(({ angle }) => {
+      const radians = (angle * Math.PI) / 180;
+      return { x: Math.cos(radians) * ring.radius, z: Math.sin(radians) * ring.radius };
+    });
+});
 
 const SEVERITY_ORDER: Record<Severity, number> = {
   critical: 0,
@@ -106,12 +144,14 @@ function creatureHome(creatureId: string, zone: Zone, district: District): Vec2 
   );
 }
 
-function towerRowPosition(island: Island, index: number, count: number): Vec2 {
-  const rowFraction = (index + 1) / (count + 1);
-  return point(
-    island.origin.x + TOWER_ROW_X_OFFSET,
-    island.origin.z + TOWER_ROW_Z_OFFSET + TOWER_ROW_LENGTH * rowFraction,
-  );
+function towerPosition(island: Island, index: number): Vec2 {
+  const centreX = island.origin.x + island.size.x / 2;
+  const centreZ = island.origin.z + island.size.z / 2;
+  // Past the last slot towers start again a little further out, rather than vanish.
+  const slot = TOWER_SLOTS[index % TOWER_SLOTS.length] ?? { x: 0, z: 0 };
+  const lap = Math.floor(index / TOWER_SLOTS.length);
+  const push = 1 + lap * 0.08;
+  return point(centreX + slot.x * push, centreZ + slot.z * push);
 }
 
 function historyFor(runs: PipelineRun[]): Tower["history"] {
@@ -206,12 +246,14 @@ export function buildCity(snapshot: Snapshot, config: AppConfig, now: Date): Cit
     cells.push({ row, column, island });
 
     if (repo !== undefined) {
+      const centreX = origin.x + ISLAND_SIZE / 2;
+      const centreZ = origin.z + ISLAND_SIZE / 2;
       districtLayouts.push({
         repo,
         island,
-        hq: point(origin.x + 3, origin.z + 11),
-        plaza: { center: point(origin.x + 7, origin.z + 7), radius: 3 },
-        nursery: { center: point(origin.x + 10.25, origin.z + 3.5), radius: 2 },
+        hq: point(centreX + HQ_OFFSET.x, centreZ + HQ_OFFSET.z),
+        plaza: { center: point(centreX, centreZ), radius: PLAZA_RADIUS },
+        nursery: { center: point(centreX + NURSERY_OFFSET.x, centreZ + NURSERY_OFFSET.z), radius: NURSERY_RADIUS },
       });
     }
   }
@@ -332,7 +374,7 @@ export function buildCity(snapshot: Snapshot, config: AppConfig, now: Date): Cit
       id: draft.id,
       name: draft.name,
       islandId: draft.islandId,
-      position: towerRowPosition(island, row.indexOf(draft), row.length),
+      position: towerPosition(island, row.indexOf(draft)),
       kind: draft.kind,
       status: draft.status,
       failStreak: draft.failStreak,

@@ -253,6 +253,34 @@ describe("buildCity pipelines", () => {
     expect(tower?.position.x).toBeGreaterThanOrEqual(outskirts?.origin.x ?? Number.POSITIVE_INFINITY);
     expect(tower?.position.z).toBeGreaterThanOrEqual(outskirts?.origin.z ?? Number.POSITIVE_INFINITY);
   });
+
+  it("keeps a busy district's HQ, nursery and towers on the island and clear of each other", () => {
+    const repo = makeRepo("mock:busy", "busy");
+    const pipelines = Array.from({ length: 25 }, (_, index) => makePipeline(`p${index}`, `pipeline-${index}`, repo.id));
+    const city = buildCity(makeSnapshot([repo], [], pipelines), makeConfig({ rules: onlyRules() }), NOW);
+    const island = city.islands.find((candidate) => candidate.id === repo.id)!;
+    const district = city.districts[0]!;
+    const centre = { x: island.origin.x + island.size.x / 2, z: island.origin.z + island.size.z / 2 };
+    // The island outline wobbles down to 0.88 of its half-size; keep everything inside that.
+    const usable = (island.size.x / 2) * 0.88;
+    const distance = (a: { x: number; z: number }, b: { x: number; z: number }) => Math.hypot(a.x - b.x, a.z - b.z);
+    const TOWER = 0.6;
+    const HQ = 1.45;
+
+    expect(distance(district.hq, centre) + HQ).toBeLessThanOrEqual(usable);
+    expect(distance(district.nursery.center, centre) + district.nursery.radius + 0.2).toBeLessThanOrEqual(usable);
+    expect(distance(district.hq, district.plaza.center)).toBeGreaterThan(district.plaza.radius + 0.4 + HQ);
+    expect(city.towers).toHaveLength(25);
+    for (const tower of city.towers) {
+      expect(distance(tower.position, centre) + TOWER).toBeLessThanOrEqual(usable);
+      expect(distance(tower.position, district.plaza.center)).toBeGreaterThan(district.plaza.radius + 0.4 + TOWER);
+      expect(distance(tower.position, district.hq)).toBeGreaterThan(HQ + TOWER);
+      expect(distance(tower.position, district.nursery.center)).toBeGreaterThan(district.nursery.radius + 0.2 + TOWER);
+      for (const other of city.towers) {
+        if (other !== tower) expect(distance(tower.position, other.position)).toBeGreaterThanOrEqual(1.15);
+      }
+    }
+  });
 });
 
 describe("buildCity incident rules", () => {
