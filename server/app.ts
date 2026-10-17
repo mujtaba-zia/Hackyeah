@@ -369,11 +369,29 @@ export function createApp(options: AppOptions): Server {
   });
 
   const unsubscribe = options.state.subscribe(broadcastState);
-  app.on("close", () => {
+  disconnectors.set(app, () => {
     unsubscribe();
     for (const client of websocketServer.clients) client.terminate();
     void websocketServer.close();
   });
+  app.on("close", () => disconnectors.get(app)?.());
 
   return app;
+}
+
+/** Per-app teardown registered by `createApp`; looked up by `closeApp`. */
+const disconnectors = new WeakMap<Server, () => void>();
+
+/**
+ * Stops the app promptly. `server.close()` alone waits for every open
+ * connection, and browser tabs hold their WebSocket open indefinitely, so
+ * drop the sockets and idle keep-alive connections first.
+ */
+export function closeApp(app: Server): Promise<void> {
+  disconnectors.get(app)?.();
+  disconnectors.delete(app);
+  const { promise, resolve } = Promise.withResolvers<void>();
+  app.close(() => resolve());
+  app.closeAllConnections();
+  return promise;
 }
