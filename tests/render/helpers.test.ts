@@ -47,7 +47,7 @@ describe("seeded scenery", () => {
       expect(distance(position, reservations.hq)).toBeGreaterThanOrEqual(2.3);
       expect(distance(position, reservations.plaza.center)).toBeGreaterThanOrEqual(2.6 + 0.9);
       expect(distance(position, reservations.nursery.center)).toBeGreaterThanOrEqual(1.5 + 0.85);
-      for (const tower of reservations.towerPositions) expect(distance(position, tower)).toBeGreaterThanOrEqual(1.65);
+      for (const tower of reservations.towerPositions) expect(distance(position, tower)).toBeGreaterThanOrEqual(2.4);
       expect([0, 1, 2]).toContain(variant);
     }
     expect(placeScenery(island, reservations)).toEqual(placements);

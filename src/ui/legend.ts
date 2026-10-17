@@ -1,6 +1,6 @@
 import type { CityModel, EffectKind, Mood, RunResult } from "../../shared/types";
 import type { Store, UiState } from "../app/store";
-import { copy, effectLabel, moodLabel, resultLabel } from "./copy";
+import { copy, effectLabel, moodLabel, pipelineLegendLabel, resultLabel } from "./copy";
 import { el } from "./dom";
 
 function tally<K extends string>(keys: readonly K[], values: readonly K[]): Record<K, number> {
@@ -50,7 +50,7 @@ export function mountLegend(panel: HTMLElement, store: Store): void {
     const counts = legendCounts(city);
     body.replaceChildren(
       section("Pull requests", moodLabel, counts.moods, "mood"),
-      section("Pipelines", resultLabel, counts.results, "result"),
+      section("Pipelines", pipelineLegendLabel, counts.results, "result"),
       section("Problems", effectLabel, counts.effects, "effect"),
     );
   }

@@ -98,15 +98,17 @@ Incidents are sorted critical → error → warning, then by title. Incident ids
 ## Layout (deterministic, pure)
 
 - Same input → same world, byte for byte. Use a seeded string hash, never `Math.random`, in core.
-- Districts sorted by name, placed on a grid `cols = ceil(sqrt(n))`, each island 22×22 units, 6-unit gaps.
+- Districts sorted by name, placed on a grid `cols = ceil(sqrt(n))`, each island 30×30 units, 6-unit gaps.
 - Empty grid cells become **filler** islands (scenery only). There is always one
   **Outskirts** island (id `outskirts`) placed after the grid for towers without a watched home.
 - Wooden **bridges** connect horizontally/vertically adjacent islands.
 - Each district is laid out around the island centre (the camera looks from +x/+z): the plaza in the
   middle (radius 3), the HQ at the back so it never hides creatures, the nursery to the right
-  (radius 1.8), and pipeline towers on four rings around them, filling inner rings first from the
-  back-left. No tower stands between the camera and the plaza. 76 towers per island get their own
-  non-overlapping spot; everything stays inside the island's rounded outline.
+  (radius 1.8), and pipeline towers in staggered rows that face the camera (3.2 apart across the
+  screen, rows 2.4 deep, every other row shifted half a spot), so each tower shows between the two
+  in front of it. Towers fill outwards from the back-left of the plaza and never stand in the strip
+  between the camera and the plaza. 42 towers per island get their own spot, at least 2.88 apart;
+  everything stays inside the island's rounded outline.
 - Creature home positions are hashed inside their zone.
 
 ## The world (renderer)
@@ -128,7 +130,11 @@ Incidents are sorted critical → error → warning, then by title. Incident ids
 - **HQ**: a timber-framed town hall with a shingled roof and a stone corner tower; the spire,
   banner and flag take the district's health colour.
 - **Towers**: CI pipelines are lighthouses fed by brass pipes; releases are harbour keeps with a
-  brazier, crates and a crane. The lantern or brazier glows in the latest run's status colour.
+  brazier, crates and a crane. Each tower is built by its pipeline's latest run: queued, cancelled
+  or never run shows only the **foundations** (footings, survey stakes, a stone pile); **running**
+  shows it half built inside scaffolding with a hoist; **passing** (or partial) shows it finished;
+  **failing** shows it snapped and leaning, its top fallen among rubble. Every stage has a light in
+  the status colour (builder's lamp, work lanterns, the lantern or brazier, smouldering embers).
   Towers follow the data: a pipeline that appears or disappears between polls gains or loses
   its tower without a reload.
 - **Plaza and nursery**: a cobbled square with lamps and benches; a fenced hay paddock.
