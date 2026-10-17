@@ -276,9 +276,38 @@ describe("buildCity incident rules", () => {
       NOW,
     );
 
+    const warmIncident = incidentFor(warmFailure, "pipelineFailing");
+    const hotIncident = incidentFor(hotFailure, "pipelineFailing");
+
     expect(noFailure.incidents).toHaveLength(0);
-    expect(incidentFor(warmFailure, "pipelineFailing").severity).toBe("error");
-    expect(incidentFor(hotFailure, "pipelineFailing").severity).toBe("critical");
+    expect(warmIncident.severity).toBe("error");
+    expect(warmIncident.title).toBe("app-ci is failing in app");
+    expect(hotIncident.severity).toBe("critical");
+    expect(hotIncident.title).toBe("app-ci failed 3 runs in a row in app");
+  });
+
+  it("names same-named failing pipelines by their home district", () => {
+    const vite = makeRepo("mock:vite", "vite");
+    const docs = makeRepo("mock:docs", "docs");
+    const city = buildCity(
+      makeSnapshot(
+        [vite, docs],
+        [],
+        [
+          makePipeline("vite-ci", "CI", vite.id, { runs: [{ id: "1", result: "failure" }] }),
+          makePipeline("docs-ci", "CI", docs.id, { runs: [{ id: "1", result: "failure" }] }),
+          makePipeline("outside-ci", "CI", "mock:outside", { runs: [{ id: "1", result: "failure" }] }),
+        ],
+      ),
+      makeConfig({ rules: onlyRules("pipelineFailing") }),
+      NOW,
+    );
+
+    expect(city.incidents.map((incident) => incident.title)).toEqual([
+      "CI is failing in docs",
+      "CI is failing in the outskirts",
+      "CI is failing in vite",
+    ]);
   });
 
   it("requires two watched districts for a shared outage", () => {
@@ -303,8 +332,11 @@ describe("buildCity incident rules", () => {
       NOW,
     );
 
+    const outage = incidentFor(twoDistricts, "sharedOutage");
+
     expect(oneDistrict.incidents).toHaveLength(0);
-    expect(incidentFor(twoDistricts, "sharedOutage").targets.districts).toEqual([api.id, app.id]);
+    expect(outage.targets.districts).toEqual([api.id, app.id]);
+    expect(outage.title).toBe("deploy (app) is failing in 2 repos");
   });
 
   it("fires review crowds at the configured size and upgrades at twice that size", () => {
@@ -375,8 +407,11 @@ describe("buildCity incident rules", () => {
       NOW,
     );
 
+    const releaseIncident = incidentFor(justPastBoundary, "staleRelease");
+
     expect(exactBoundary.incidents).toHaveLength(0);
-    expect(incidentFor(justPastBoundary, "staleRelease").severity).toBe("warning");
+    expect(releaseIncident.severity).toBe("warning");
+    expect(releaseIncident.title).toBe("app-release in app has no recent success");
   });
 
   it("starts a meltdown at three affected districts, not two", () => {

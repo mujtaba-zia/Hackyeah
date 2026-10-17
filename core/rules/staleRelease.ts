@@ -1,5 +1,5 @@
 import type { Incident } from "../../shared/types";
-import type { RuleContext } from "./types";
+import { towerPlaceName, type RuleContext } from "./types";
 
 const MILLIS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -26,12 +26,13 @@ export function staleRelease(context: RuleContext): Incident[] {
 
     if (hasRecentSuccess) continue;
 
+    const place = towerPlaceName(context, tower);
     const dayLabel = releaseStaleDays === 1 ? "day" : "days";
     incidents.push({
       id: `staleRelease:${tower.id}`,
       ruleId: "staleRelease",
       severity: "warning",
-      title: `${tower.name} has no recent successful release`,
+      title: `${tower.name} in ${place} has no recent success`,
       detail: `No successful release finished in the last ${releaseStaleDays} ${dayLabel}.`,
       effect: "smoke",
       targets: { districts: [], towers: [tower.id], creatures: [] },
