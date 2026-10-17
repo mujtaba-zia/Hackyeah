@@ -215,7 +215,7 @@ function createRainGeometry(seed: number, offset: number): THREE.BufferGeometry 
  * on screen it lands in front of the HQ's doorstep instead of across its walls.
  * Clouds spread sideways (across the view) rather than in depth.
  */
-const STORM_FORWARD = 4.4;
+const STORM_FORWARD = 5.2;
 const STORM_HEIGHT = 3.3;
 
 function createStormEffect(incident: Incident, locator: EffectLocator): StormEffect {
@@ -237,7 +237,7 @@ function createStormEffect(incident: Incident, locator: EffectLocator): StormEff
     const position = positions[targetIndex];
     if (!position) continue;
     const tint = new THREE.Mesh(
-      new THREE.CircleGeometry(3.8, 28),
+      new THREE.CircleGeometry(4.6, 28),
       new THREE.MeshBasicMaterial({ color: 0xcc3646, transparent: true, opacity: 0.2, depthWrite: false }),
     );
     tint.rotation.x = -Math.PI * 0.5;
