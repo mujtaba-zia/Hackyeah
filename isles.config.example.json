@@ -1,0 +1,26 @@
+{
+  "watch": ["mock:payments", "mock:catalog"],
+  "coverage": {
+    "Platform Integration": ["Catalog"]
+  },
+  "thresholds": {
+    "staleDays": 7,
+    "waitingHours": 24,
+    "crowdSize": 5,
+    "draftPileup": 5,
+    "failStreakHot": 3,
+    "releaseStaleDays": 14
+  },
+  "rules": {
+    "pipelineFailing": true,
+    "sharedOutage": true,
+    "reviewCrowd": true,
+    "draftPileup": true,
+    "stalePrs": true,
+    "staleRelease": true,
+    "meltdown": true
+  },
+  "pollSeconds": 30,
+  "maxRepos": 12,
+  "maxPrsPerRepo": 40
+}
