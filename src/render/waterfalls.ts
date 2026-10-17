@@ -128,8 +128,8 @@ function makeWaterfallEdge(island: Island, side: IslandEdge): WaterfallEdge {
     side,
     position: { x, z },
     width: Math.max(1.4, (alongX ? island.size.x : island.size.z) * 0.28),
-    // Falls past the deepest rock tip (islands hang up to 0.85 × size).
-    depth: Math.max(island.size.x, island.size.z) * 1.05 + ((island.seed >>> 0) % 7) * 0.3,
+    // Falls past the deepest rock tip (islands hang up to 0.6 × size).
+    depth: Math.max(island.size.x, island.size.z) * 0.75 + ((island.seed >>> 0) % 7) * 0.3,
   };
 }
 
