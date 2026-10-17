@@ -33,7 +33,7 @@ export function legendCounts(city: CityModel | null | undefined): {
   return {
     moods: tally(Object.keys(moodLabel) as Mood[], city?.creatures.map((creature) => creature.mood) ?? []),
     results: tally(Object.keys(resultLabel) as RunResult[], city?.towers.map((tower) => tower.status) ?? []),
-    effects: tally(Object.keys(effectLabel) as EffectKind[], city?.incidents.map((incident) => incident.effect) ?? []),
+    effects: tally(Object.keys(effectLabel) as EffectKind[], city?.incidents.flatMap((incident) => (incident.effect ? [incident.effect] : [])) ?? []),
   };
 }
 

@@ -55,7 +55,9 @@ export function createDistrictVisual(initial: District, island: Island, assets: 
   pickSurface.rotation.x = -Math.PI / 2;
   pickSurface.position.set(island.origin.x + island.size.x / 2, 0.08, island.origin.z + island.size.z / 2);
   pickSurface.scale.set(island.size.x * 0.96, island.size.z * 0.96, 1);
-  label.sprite.position.set(initial.plaza.center.x, 1.75, island.origin.z + island.size.z - 1.15);
+  // The repo name floats just above the town hall.
+  const labelHeight = assets.kit.top("hq") * HQ_SCALE + 0.55;
+  label.sprite.position.set(initial.hq.x, labelHeight, initial.hq.z);
   root.add(pickSurface, hq, plaza, nursery, label.sprite);
   let data = initial;
 
@@ -73,7 +75,7 @@ export function createDistrictVisual(initial: District, island: Island, assets: 
       if (next.health !== data.health) swapMaterial(hq, "Accent", assets.accentMaterials[next.health]);
       hq.position.set(next.hq.x, GROUND_LIFT, next.hq.z);
       placeGroundPieces(next, plaza, nursery);
-      label.sprite.position.set(next.plaza.center.x, 1.75, nextIsland.origin.z + nextIsland.size.z - 1.15);
+      label.sprite.position.set(next.hq.x, labelHeight, next.hq.z);
       pickSurface.position.set(nextIsland.origin.x + nextIsland.size.x / 2, 0.08, nextIsland.origin.z + nextIsland.size.z / 2);
       pickSurface.scale.set(nextIsland.size.x * 0.96, nextIsland.size.z * 0.96, 1);
       data = next;

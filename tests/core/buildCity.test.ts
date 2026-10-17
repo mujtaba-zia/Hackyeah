@@ -533,40 +533,6 @@ describe("buildCity incident rules", () => {
     }
   });
 
-  it("cables only reach beyond a tower's home, and only a shared outage breaks them", () => {
-    const app = makeRepo("mock:app", "app");
-    const api = makeRepo("mock:api", "api");
-    const web = makeRepo("mock:web", "web");
-    const city = buildCity(
-      makeSnapshot(
-        [app, api, web],
-        [],
-        [
-          makePipeline("shared", "shared-ci", app.id, {
-            coversRepoIds: [app.id, api.id],
-            runs: [{ id: "1", result: "failure" }],
-          }),
-          makePipeline("solo", "solo-ci", web.id, {
-            coversRepoIds: [web.id],
-            runs: [{ id: "1", result: "failure" }],
-          }),
-          makePipeline("healthy", "healthy-ci", app.id, {
-            coversRepoIds: [app.id, web.id],
-            runs: [{ id: "1", result: "success" }],
-          }),
-        ],
-      ),
-      makeConfig({ rules: onlyRules("sharedOutage") }),
-      NOW,
-    );
-
-    // Towers stand in their home district, so they draw no cable to it.
-    expect(Object.fromEntries(city.links.map((link) => [link.id, link.broken]))).toEqual({
-      "healthy->mock:web": false,
-      "shared->mock:api": true,
-    });
-  });
-
   it("derives district health from warning, error, and critical incidents", () => {
     const warning = makeRepo("mock:warning", "warning");
     const bad = makeRepo("mock:bad", "bad");

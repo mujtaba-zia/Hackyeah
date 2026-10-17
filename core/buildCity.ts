@@ -446,31 +446,6 @@ export function buildCity(snapshot: Snapshot, config: AppConfig, now: Date): Cit
     ...district,
     health: healthByDistrictId[district.id] ?? "good",
   }));
-  const districtsById: Record<string, District> = Object.create(null);
-  for (const district of districtsWithHealth) districtsById[district.id] = district;
-
-  const outageTowerIds: Record<string, true> = Object.create(null);
-  for (const incident of incidents) {
-    if (incident.ruleId !== "sharedOutage") continue;
-    for (const towerId of incident.targets.towers) outageTowerIds[towerId] = true;
-  }
-
-  const links: CityModel["links"] = [];
-  for (const tower of towers) {
-    for (const districtId of tower.coversDistrictIds) {
-      // A tower standing in its own district needs no cable to it; cables show reach beyond home.
-      const district = districtId === tower.islandId ? undefined : districtsById[districtId];
-      if (district === undefined) continue;
-      links.push({
-        id: `${tower.id}->${district.id}`,
-        towerId: tower.id,
-        districtId: district.id,
-        from: tower.position,
-        to: district.hq,
-        broken: Object.hasOwn(outageTowerIds, tower.id),
-      });
-    }
-  }
 
   let worldX = 0;
   let worldZ = 0;
@@ -486,7 +461,6 @@ export function buildCity(snapshot: Snapshot, config: AppConfig, now: Date): Cit
     districts: districtsWithHealth,
     creatures,
     towers,
-    links,
     bridges: bridgesFor(cells, outskirtsCell),
     incidents,
   };

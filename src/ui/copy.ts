@@ -98,7 +98,6 @@ export const effectLabel: Record<EffectKind, string> = {
   smoke: "Smoke: drafts piling up or release overdue",
   crowd: "Crowd: review queue",
   storm: "Storm: shared pipeline down",
-  beacon: "Beacon: stale PRs",
   giant: "Giant: meltdown",
 };
 

@@ -18,10 +18,10 @@ Credentials exist only in the server's environment.
 | Directory | Role | May import |
 | --- | --- | --- |
 | `shared/` | The contract: `types.ts` (Snapshot, AppConfig, CityModel, ClientState), `protocol.ts` (WebSocket messages), `config.ts` (defaults and the untrusted-input normalizer), `guards.ts`. | nothing |
-| `core/` | Pure, deterministic logic: `selectRepos` (watch list + cap), `buildCity` (moods, towers, links, layout), `rules/` (one module per kind of problem). No clocks, randomness or I/O. | `shared` |
+| `core/` | Pure, deterministic logic: `selectRepos` (watch list + cap), `buildCity` (moods, towers, layout), `rules/` (one module per kind of problem). No clocks, randomness or I/O. | `shared` |
 | `server/providers/` | Read-only data sources implementing `Provider`: `github/`, `azure/`, `mock/` (with JSON scenarios). | `shared` |
 | `server/` | `env.ts` (environment + `isles.config.json`), `state.ts` (poll loop, caching, throttling, provider switching), `app.ts` (HTTP, `/health`, `/ws`, static files), `main.ts`. | `shared`, `core`, providers |
-| `src/render/` | The three.js world behind `createWorldView()`: islands, sky, water, scenery, buildings, creatures, links, effects, labels, picking. `kit.ts` loads the model kit. | `shared` |
+| `src/render/` | The three.js world behind `createWorldView()`: islands, sky, water, scenery, buildings, creatures, effects, labels, picking. `kit.ts` loads the model kit. | `shared` |
 | `art/blender/` | Blender Python that builds every model (`kitlib.py` primitives, `models_*.py`, `build_kit.py` export). Output: `public/models/kit.glb`. | Blender only |
 | `src/app/`, `src/ui/` | The client: socket with reconnect, a small store, and the HUD panels. | `shared`, `src/render` |
 
@@ -32,7 +32,7 @@ Credentials exist only in the server's environment.
 2. `selectRepos()` applies the watch list and `maxRepos`.
 3. `provider.fetchSnapshot()` fetches PRs and pipeline runs for those repos only.
 4. `buildCity(snapshot, config, now)` produces the world: districts, creatures,
-   towers, links, bridges, and incidents sorted by severity.
+   towers, bridges, and incidents sorted by severity.
 5. The server broadcasts `ClientState` to every tab.
 
 When only thresholds or rules change, step 4 reruns on the cached snapshot

@@ -384,7 +384,6 @@ option:disabled {
 .effect-smoke { background: #8f96a3; }
 .effect-crowd { background: var(--warning); }
 .effect-storm { background: #445; border: 1px solid var(--critical); }
-.effect-beacon { background: #ffd25f; }
 .effect-giant { background: #8e5a7d; }
 
 .count {
