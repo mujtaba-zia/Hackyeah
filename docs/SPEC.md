@@ -98,20 +98,23 @@ Incidents are sorted critical → error → warning, then by title. Incident ids
 ## Layout (deterministic, pure)
 
 - Same input → same world, byte for byte. Use a seeded string hash, never `Math.random`, in core.
-- Districts sorted by name, placed on a grid `cols = ceil(sqrt(n))`, each island 16×16 units, 6-unit gaps.
+- Districts sorted by name, placed on a grid `cols = ceil(sqrt(n))`, each island 22×22 units, 6-unit gaps.
 - Empty grid cells become **filler** islands (scenery only). There is always one
   **Outskirts** island (id `outskirts`) placed after the grid for towers without a watched home.
 - Wooden **bridges** connect horizontally/vertically adjacent islands.
 - Each district is laid out around the island centre (the camera looks from +x/+z): the plaza in the
-  middle (radius 2.6), the HQ at the back so it never hides creatures, the nursery to the right
-  (radius 1.5), and pipeline towers on rings to the left and back. Up to 25 towers per island get
-  their own non-overlapping slot; everything stays inside the island's rounded outline.
+  middle (radius 3), the HQ at the back so it never hides creatures, the nursery to the right
+  (radius 1.8), and pipeline towers on four rings around them, filling inner rings first from the
+  back-left. No tower stands between the camera and the plaza. 76 towers per island get their own
+  non-overlapping spot; everything stays inside the island's rounded outline.
 - Creature home positions are hashed inside their zone.
 
 ## The world (renderer)
 
-- Orthographic isometric camera. Drag to pan, wheel/pinch to zoom, keyboard arrows/+/-.
-  Clamped so the world never leaves the screen. Click selects; selection ring highlights.
+- Orthographic isometric camera. Drag to pan: the ground you grab stays under the cursor (a press
+  that moves under 6px is a click). Wheel, trackpad pinch and touch pinch zoom towards the cursor;
+  arrow keys pan and +/- zoom. The view can pan anywhere over the world plus a little under half a
+  screen, so the world never leaves the screen. Click selects; selection ring highlights.
 - **Floating islands**: grass-topped slab with an irregular rocky underside that tapers
   to a point. Rock depth and silhouette are seeded per island.
 - **Sky**: vertical gradient background with drifting clouds **below** the islands (decorative, not pickable).

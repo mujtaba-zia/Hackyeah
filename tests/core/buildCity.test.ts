@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildCity } from "../../core/buildCity";
+import { HQ_FOOTPRINT, TOWER_FOOTPRINT, TOWER_SLOTS, buildCity } from "../../core/buildCity";
 import { selectRepos } from "../../core/selectRepos";
 import { DEFAULT_CONFIG } from "../../shared/config";
 import { RULE_IDS } from "../../shared/types";
@@ -254,9 +254,10 @@ describe("buildCity pipelines", () => {
     expect(tower?.position.z).toBeGreaterThanOrEqual(outskirts?.origin.z ?? Number.POSITIVE_INFINITY);
   });
 
-  it("keeps a busy district's HQ, nursery and towers on the island and clear of each other", () => {
+  it("gives a busy district room for 70+ towers, all on the island and clear of each other", () => {
+    expect(TOWER_SLOTS.length).toBeGreaterThanOrEqual(70);
     const repo = makeRepo("mock:busy", "busy");
-    const pipelines = Array.from({ length: 25 }, (_, index) => makePipeline(`p${index}`, `pipeline-${index}`, repo.id));
+    const pipelines = TOWER_SLOTS.map((_, index) => makePipeline(`p${index}`, `pipeline-${index}`, repo.id));
     const city = buildCity(makeSnapshot([repo], [], pipelines), makeConfig({ rules: onlyRules() }), NOW);
     const island = city.islands.find((candidate) => candidate.id === repo.id)!;
     const district = city.districts[0]!;
@@ -264,20 +265,23 @@ describe("buildCity pipelines", () => {
     // The island outline wobbles down to 0.88 of its half-size; keep everything inside that.
     const usable = (island.size.x / 2) * 0.88;
     const distance = (a: { x: number; z: number }, b: { x: number; z: number }) => Math.hypot(a.x - b.x, a.z - b.z);
-    const TOWER = 0.6;
-    const HQ = 1.45;
+    const TOWER = TOWER_FOOTPRINT;
+    const HQ = HQ_FOOTPRINT;
 
     expect(distance(district.hq, centre) + HQ).toBeLessThanOrEqual(usable);
-    expect(distance(district.nursery.center, centre) + district.nursery.radius + 0.2).toBeLessThanOrEqual(usable);
+    expect(distance(district.nursery.center, centre) + district.nursery.radius + 0.6).toBeLessThanOrEqual(usable);
     expect(distance(district.hq, district.plaza.center)).toBeGreaterThan(district.plaza.radius + 0.4 + HQ);
-    expect(city.towers).toHaveLength(25);
+    expect(city.towers).toHaveLength(TOWER_SLOTS.length);
     for (const tower of city.towers) {
       expect(distance(tower.position, centre) + TOWER).toBeLessThanOrEqual(usable);
       expect(distance(tower.position, district.plaza.center)).toBeGreaterThan(district.plaza.radius + 0.4 + TOWER);
       expect(distance(tower.position, district.hq)).toBeGreaterThan(HQ + TOWER);
-      expect(distance(tower.position, district.nursery.center)).toBeGreaterThan(district.nursery.radius + 0.2 + TOWER);
+      expect(distance(tower.position, district.nursery.center)).toBeGreaterThan(district.nursery.radius + 0.6 + TOWER);
+      // Nothing stands between the camera (looking from +x/+z) and the plaza.
+      const angle = (Math.atan2(tower.position.z - centre.z, tower.position.x - centre.x) * 180) / Math.PI;
+      expect(angle > 10 && angle < 80).toBe(false);
       for (const other of city.towers) {
-        if (other !== tower) expect(distance(tower.position, other.position)).toBeGreaterThanOrEqual(1.15);
+        if (other !== tower) expect(distance(tower.position, other.position)).toBeGreaterThanOrEqual(1.25);
       }
     }
   });
