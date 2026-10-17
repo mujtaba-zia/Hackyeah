@@ -1,4 +1,5 @@
 import { RULE_IDS, type AppConfig, type ClientState, type ProviderKind, type Thresholds } from "../../shared/types";
+import { isWatched } from "../../core/selectRepos";
 import type { Store, UiState } from "../app/store";
 import type { HudActions } from "./actions";
 import { copy, providerLabel, ruleLabel, thresholdLabel } from "./copy";
@@ -19,9 +20,14 @@ function numberInput(value: number, onCommit: (value: number) => void): HTMLInpu
   return input;
 }
 
-/** The watch list after toggling one repo; `null` (watch everything) expands to an explicit list first. */
+/**
+ * The watch list after toggling one repo, always as repo ids. `null` (watch
+ * everything) and hand-written names from isles.config.json are resolved
+ * against the catalog first.
+ */
 export function toggleWatched(server: ClientState, repoId: string, watched: boolean): string[] {
-  const current = server.config.watchedRepoIds ?? server.repoCatalog.map((repo) => repo.id);
+  const configured = server.config.watchedRepoIds;
+  const current = server.repoCatalog.filter((repo) => configured === null || isWatched(repo, configured)).map((repo) => repo.id);
   const next = current.filter((id) => id !== repoId);
   if (watched) next.push(repoId);
   return next;
@@ -65,11 +71,10 @@ export function mountSettings(panel: HTMLElement, store: Store, actions: HudActi
       scenario.append(option);
     }
 
-    const watching = new Set(config.watchedRepoIds ?? server.repoCatalog.map((repo) => repo.id));
     repoList = el("ul", { class: "repo-list" });
     for (const repo of server.repoCatalog) {
       const box = el("input", { attrs: { type: "checkbox" } });
-      box.checked = watching.has(repo.id);
+      box.checked = config.watchedRepoIds === null || isWatched(repo, config.watchedRepoIds);
       box.addEventListener("change", () => setConfig({ watchedRepoIds: toggleWatched(server, repo.id, box.checked) }));
       const item = el("li", { attrs: { "data-name": `${repo.name} ${repo.project}`.toLowerCase() } }, el("label", {}, box, el("span", { text: repo.name }), el("small", { text: repo.project })));
       repoList.append(item);

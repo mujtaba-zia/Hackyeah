@@ -81,6 +81,13 @@ describe("Problems panel", () => {
 });
 
 describe("watch list and selection", () => {
+  it("turns hand-written names into ids when a repo is toggled", () => {
+    const server = serverState();
+    const [first, second] = server.repoCatalog;
+    const named = serverState({ config: { ...DEFAULT_CONFIG, watchedRepoIds: [first!.name.toUpperCase(), second!.name] } });
+    expect(toggleWatched(named, second!.id, false)).toEqual([first!.id]);
+  });
+
   it("expands 'watch everything' into an explicit list when one repo is unticked", () => {
     const server = serverState();
     const [first, ...rest] = server.repoCatalog.map((repo) => repo.id);
