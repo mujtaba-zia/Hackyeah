@@ -11,7 +11,7 @@ export interface EffectLocator {
 
 export interface EffectSlot {
   readonly group: THREE.Group;
-  update(incident: Incident, locator: EffectLocator): void;
+  update(incident: VisibleIncident, locator: EffectLocator): void;
   animate(time: number): void;
   dispose(): void;
 }
@@ -49,13 +49,6 @@ interface StormEffect extends EffectBase {
   phase: number;
 }
 
-interface BeaconEffect extends EffectBase {
-  kind: "beacon";
-  pillar: THREE.Mesh<THREE.CylinderGeometry, THREE.MeshBasicMaterial>;
-  light: THREE.PointLight;
-  phase: number;
-}
-
 interface GiantEffect extends EffectBase {
   kind: "giant";
   body: THREE.Mesh;
@@ -63,7 +56,14 @@ interface GiantEffect extends EffectBase {
   phase: number;
 }
 
-type EffectVisual = FireEffect | SmokeEffect | CrowdEffect | StormEffect | BeaconEffect | GiantEffect;
+type EffectVisual = FireEffect | SmokeEffect | CrowdEffect | StormEffect | GiantEffect;
+
+/** An incident the world draws; incidents without an effect only appear in Problems. */
+export type VisibleIncident = Incident & { effect: EffectKind };
+
+export function hasEffect(incident: Incident): incident is VisibleIncident {
+  return incident.effect !== null;
+}
 
 function incidentSignature(incident: Incident): string {
   return [
@@ -272,20 +272,6 @@ function createStormEffect(incident: Incident, locator: EffectLocator): StormEff
   return { kind: "storm", group, clouds, cloudHeights, rain, phase: seededRange(seed, 300, 0, Math.PI * 2) };
 }
 
-function createBeaconEffect(incident: Incident, locator: EffectLocator): BeaconEffect {
-  const group = new THREE.Group();
-  group.name = `effect:beacon:${incident.id}`;
-  const position = collectIncidentPositions(incident, locator)[0] ?? incident.focus;
-  group.position.set(position.x, 0, position.z);
-  const material = new THREE.MeshBasicMaterial({ color: 0xffd25f, transparent: true, opacity: 0.42, depthWrite: false });
-  const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.86, 6.4, 12, 1, true), material);
-  const light = new THREE.PointLight(0xffd25f, 1.3, 11, 2);
-  pillar.position.y = 3.2;
-  light.position.y = 4.5;
-  group.add(pillar, light);
-  return { kind: "beacon", group, pillar, light, phase: seededRange(hashString(incident.id), 7, 0, Math.PI * 2) };
-}
-
 /** A horned stone colossus standing on the first burning district, towering over the rest. */
 function createGiantEffect(incident: Incident, locator: EffectLocator): GiantEffect {
   const group = new THREE.Group();
@@ -329,12 +315,11 @@ function createGiantEffect(incident: Incident, locator: EffectLocator): GiantEff
   return { kind: "giant", group, body, head, phase: seededRange(hashString(incident.id), 9, 0, Math.PI * 2) };
 }
 
-function createEffectVisual(incident: Incident, locator: EffectLocator, assets: RenderAssets): EffectVisual {
+function createEffectVisual(incident: VisibleIncident, locator: EffectLocator, assets: RenderAssets): EffectVisual {
   if (incident.effect === "fire") return createFireEffect(incident, locator, assets);
   if (incident.effect === "smoke") return createSmokeEffect(incident, locator, assets);
   if (incident.effect === "crowd") return createCrowdEffect(incident, locator);
   if (incident.effect === "storm") return createStormEffect(incident, locator);
-  if (incident.effect === "beacon") return createBeaconEffect(incident, locator);
   return createGiantEffect(incident, locator);
 }
 
@@ -387,12 +372,6 @@ function updateEffectVisual(visual: EffectVisual, time: number): void {
     }
     return;
   }
-  if (visual.kind === "beacon") {
-    const intensity = 0.42 + (Math.sin(time * 3 + visual.phase) + 1) * 0.16;
-    visual.pillar.material.opacity = intensity;
-    visual.light.intensity = 0.9 + intensity;
-    return;
-  }
   visual.body.rotation.y = Math.sin(time * 0.5 + visual.phase) * 0.16;
   visual.head.position.y = 7 + Math.sin(time * 1.4 + visual.phase) * 0.16;
 }
@@ -426,7 +405,7 @@ function disposeEffectVisual(visual: EffectVisual): void {
   visual.group.clear();
 }
 
-export function createEffectSlot(initial: Incident, locator: EffectLocator, assets: RenderAssets): EffectSlot {
+export function createEffectSlot(initial: VisibleIncident, locator: EffectLocator, assets: RenderAssets): EffectSlot {
   const group = new THREE.Group();
   group.name = `incident:${initial.id}`;
   let signature = incidentSignature(initial);
@@ -435,7 +414,7 @@ export function createEffectSlot(initial: Incident, locator: EffectLocator, asse
 
   return {
     group,
-    update(next: Incident, nextLocator: EffectLocator): void {
+    update(next: VisibleIncident, nextLocator: EffectLocator): void {
       const nextSignature = incidentSignature(next);
       if (nextSignature === signature) return;
       group.remove(visual.group);

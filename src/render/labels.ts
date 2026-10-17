@@ -53,7 +53,7 @@ function drawLabel(text: string, foreground: string, background: string): LabelD
 
 /** Labels grow when zoomed out and shrink when zoomed in, within limits, so names stay readable. */
 const MIN_ZOOM_COMPENSATION = 0.8;
-const MAX_ZOOM_COMPENSATION = 2.2;
+const MAX_ZOOM_COMPENSATION = 4.5;
 
 /** A canvas-drawn label that is safe for provider supplied text. */
 export function createTextLabel(

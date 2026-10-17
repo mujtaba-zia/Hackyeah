@@ -88,12 +88,10 @@ defaults, copy `isles.config.example.json` to `isles.config.json` (gitignored):
 | Egg in the nursery | A draft pull request. |
 | Hourglass / red X above a creature | The PR's checks are running / failing. |
 | Tower | A pipeline or workflow. Lighthouses are CI, harbour keeps are releases. The latest run builds it: foundations while queued, scaffolding while running, finished when passing, broken when failing. Its light shows the status colour. |
-| Cable between islands | A pipeline that also builds other repositories. It turns red and pulses when that pipeline fails. |
 | Fire | A failing pipeline. |
 | Storm | A failing pipeline that several repositories depend on. |
 | Crowd | Too many PRs waiting on review. |
 | Smoke | Drafts piling up, or a release that has not succeeded in a while. |
-| Beacon | Stale pull requests. |
 | Giant | Three or more repositories in serious trouble at once. |
 
 The **Legend** panel shows the same, with live counts.

@@ -17,12 +17,11 @@ only. Do not read, copy or paraphrase any other existing codebase.
 | Open (non-draft) pull request | A **creature** wandering its district's plaza |
 | Draft pull request | An **egg** in its district's nursery |
 | Pipeline / workflow | A **tower** standing on its home district (or on the Outskirts island when its home is not watched/unknown) |
-| Pipeline covering several repos | **Links** (glowing cables) from the tower to every covered district |
-| Detected problem | An **incident** with a visual **effect** (fire, smoke, crowd, storm, beacon, giant) and a row in the Problems panel |
+| Detected problem | An **incident** with a visual **effect** (fire, smoke, crowd, storm, giant), or only a row in the Problems panel |
 
 Creatures never leave their own district. A backed-up review queue shows up as a
 crowd in the plaza. A failing pipeline that covers several repos shows broken
-red links and a storm over every covered district: one failure, many places hurt.
+a storm over every covered district: one failure, many places hurt.
 
 ## Runtime architecture
 
@@ -84,10 +83,10 @@ hourglass while pending, red X on failure, nothing otherwise.
 | Rule id | Fires when | Severity | Effect | Targets |
 | --- | --- | --- | --- | --- |
 | `pipelineFailing` | tower status `failure` | `error`; `critical` if `failStreak ≥ failStreakHot` | `fire` | tower + home district |
-| `sharedOutage` | failing tower covers ≥ 2 watched districts | `critical` | `storm` | tower + every covered district; its links become `broken` |
+| `sharedOutage` | failing tower covers ≥ 2 watched districts | `critical` | `storm` | tower + every covered district |
 | `reviewCrowd` | ≥ `crowdSize` plaza creatures in mood `waiting`/`stale`/`changes` in one district | `warning`; `error` at 2× | `crowd` | district + those creatures |
 | `draftPileup` | ≥ `draftPileup` eggs in one district | `warning` | `smoke` | district + eggs |
-| `stalePrs` | ≥ 1 `stale` PR in a district (open or draft) | `warning` | `beacon` | district + those creatures |
+| `stalePrs` | ≥ 1 `stale` PR in a district (open or draft) | `warning` | none (listed only) | district + those creatures |
 | `staleRelease` | a `release` tower with no `success` run finishing within `releaseStaleDays` | `warning` | `smoke` | tower |
 | `meltdown` | ≥ 3 districts with an `error`/`critical` incident | `critical` | `giant` | those districts |
 
@@ -141,13 +140,12 @@ Incidents are sorted critical → error → warning, then by title. Incident ids
 - **Creatures**: round 3D critters coloured by mood that waddle around their home spot facing
   where they walk; drafts are speckled eggs in straw nests that wobble. A check badge
   (hourglass, cross) floats above.
-- **Links**: arcs from a tower to every *other* district it covers (none to its own home).
-  Calm cyan when fine, pulsing red when broken.
 - **Effects**: fire+smoke particles (`fire`), grey smoke (`smoke`), a ring + tight cluster (`crowd`),
   a low line of storm clouds with rain over the district's front edge plus a red ground tint, kept
-  on the camera side so it never hides buildings (`storm`), a vertical light pillar (`beacon`),
+  on the camera side so it never hides buildings (`storm`),
   a huge low-poly monster towering over the affected districts (`giant`).
-- **Labels**: district name signs always visible; tower names on hover/selection.
+- **Labels**: each repo's name floats above its town hall, always visible and readable at any zoom;
+  tower names on hover/selection.
 - `prefers-reduced-motion`: freeze all ambient animation (clouds, water, wandering, particles).
 - If WebGL is unavailable the canvas hides and the HUD keeps working.
 
