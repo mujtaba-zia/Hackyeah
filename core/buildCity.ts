@@ -24,7 +24,7 @@ import { hashToUnit } from "./hash";
 import { RULE_CATALOG } from "./rules/catalog";
 import { selectRepos } from "./selectRepos";
 
-const ISLAND_SIZE = 16;
+const ISLAND_SIZE = 22;
 const ISLAND_GAP = 6;
 const ISLAND_SPACING = ISLAND_SIZE + ISLAND_GAP;
 const MILLIS_PER_HOUR = 60 * 60 * 1000;
@@ -32,42 +32,52 @@ const MILLIS_PER_HOUR = 60 * 60 * 1000;
 // District layout, relative to the island centre. The game camera looks from
 // +x/+z, so angles (atan2 of z over x) of 45° face the viewer and 225° face away.
 // The plaza sits in the middle, the HQ stands at the back where it never hides
-// creatures, the nursery is to the right, and towers ring the left and back.
-const PLAZA_RADIUS = 2.6;
-const NURSERY_RADIUS = 1.5;
-const HQ_OFFSET = { x: -3.5, z: -3.5 };
-const NURSERY_OFFSET = { x: 3.55, z: -3.55 };
+// creatures, the nursery is to the right, and towers fill rings around them.
+const PLAZA_RADIUS = 3;
+const NURSERY_RADIUS = 1.8;
+const HQ_OFFSET = { x: -4.6, z: -4.6 };
+const NURSERY_OFFSET = { x: 4.8, z: -4.8 };
 
-interface TowerRing {
-  radius: number;
-  from: number;
-  to: number;
-  /** Preferred angle; the first towers stand closest to it. */
-  centre: number;
-  count: number;
+/** Half-width of the HQ model as drawn (the renderer's HQ scale times its footprint). */
+export const HQ_FOOTPRINT = 1.7;
+/** A tower's own footprint radius, and the minimum distance between two tower centres. */
+export const TOWER_FOOTPRINT = 0.6;
+const TOWER_SPACING = 1.3;
+/** Room the nursery's fence and hay bales take beyond its radius. */
+const NURSERY_MARGIN = 0.6;
+const TOWER_RING_RADII = [4.8, 6.1, 7.4, 8.7] as const;
+/** Degrees between the camera and the plaza; towers here would hide the square. */
+const VIEW_SECTOR = { from: 10, to: 80 } as const;
+/** Towers fill outwards from the inner ring, each ring starting from this angle (back-left). */
+const PREFERRED_ANGLE = 150;
+
+function angularDistance(a: number, b: number): number {
+  const difference = Math.abs(a - b) % 360;
+  return difference > 180 ? 360 - difference : difference;
 }
 
-const TOWER_RINGS: readonly TowerRing[] = [
-  { radius: 5.4, from: 95, to: 200, centre: 150, count: 9 },
-  { radius: 5.4, from: 250, to: 284, centre: 267, count: 3 },
-  { radius: 4.0, from: 110, to: 190, centre: 150, count: 5 },
-  // Offset by half a step from the first ring so neighbours on the two rings stay apart.
-  { radius: 6.35, from: 95 + 105 / 16, to: 200 - 105 / 16, centre: 150, count: 8 },
-];
-
-/** Tower slots around the island centre, in fill order. */
-const TOWER_SLOTS: readonly Vec2[] = TOWER_RINGS.flatMap((ring) => {
-  const slots: { angle: number; distance: number }[] = [];
-  for (let index = 0; index < ring.count; index += 1) {
-    const angle = ring.from + ((ring.to - ring.from) * index) / Math.max(1, ring.count - 1);
-    slots.push({ angle, distance: Math.abs(angle - ring.centre) });
+/**
+ * Every tower spot on a district island, in fill order, relative to its centre.
+ * Spots sit on rings `TOWER_SPACING` apart, never in the camera's view of the
+ * plaza and never on the HQ or the nursery.
+ */
+export const TOWER_SLOTS: readonly Vec2[] = TOWER_RING_RADII.flatMap((radius) => {
+  const count = Math.floor((2 * Math.PI * radius) / TOWER_SPACING);
+  const ring: { angle: number; slot: Vec2 }[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const angle = (360 * index) / count;
+    if (angle >= VIEW_SECTOR.from && angle <= VIEW_SECTOR.to) continue;
+    const radians = (angle * Math.PI) / 180;
+    const slot = { x: Math.cos(radians) * radius, z: Math.sin(radians) * radius };
+    if (Math.hypot(slot.x - HQ_OFFSET.x, slot.z - HQ_OFFSET.z) < HQ_FOOTPRINT + TOWER_FOOTPRINT + 0.3) continue;
+    if (Math.hypot(slot.x - NURSERY_OFFSET.x, slot.z - NURSERY_OFFSET.z) < NURSERY_RADIUS + NURSERY_MARGIN + TOWER_FOOTPRINT) {
+      continue;
+    }
+    ring.push({ angle, slot });
   }
-  return slots
-    .sort((left, right) => left.distance - right.distance || left.angle - right.angle)
-    .map(({ angle }) => {
-      const radians = (angle * Math.PI) / 180;
-      return { x: Math.cos(radians) * ring.radius, z: Math.sin(radians) * ring.radius };
-    });
+  return ring
+    .sort((left, right) => angularDistance(left.angle, PREFERRED_ANGLE) - angularDistance(right.angle, PREFERRED_ANGLE) || left.angle - right.angle)
+    .map(({ slot }) => slot);
 });
 
 const SEVERITY_ORDER: Record<Severity, number> = {
@@ -147,11 +157,14 @@ function creatureHome(creatureId: string, zone: Zone, district: District): Vec2 
 function towerPosition(island: Island, index: number): Vec2 {
   const centreX = island.origin.x + island.size.x / 2;
   const centreZ = island.origin.z + island.size.z / 2;
-  // Past the last slot towers start again a little further out, rather than vanish.
+  // Past the last slot, towers go round again turned half a spacing along their
+  // ring: they may crowd a neighbour, but they stay on the island.
   const slot = TOWER_SLOTS[index % TOWER_SLOTS.length] ?? { x: 0, z: 0 };
   const lap = Math.floor(index / TOWER_SLOTS.length);
-  const push = 1 + lap * 0.08;
-  return point(centreX + slot.x * push, centreZ + slot.z * push);
+  const turn = lap === 0 ? 0 : (lap * TOWER_SPACING) / 2 / Math.hypot(slot.x, slot.z);
+  const x = slot.x * Math.cos(turn) - slot.z * Math.sin(turn);
+  const z = slot.x * Math.sin(turn) + slot.z * Math.cos(turn);
+  return point(centreX + x, centreZ + z);
 }
 
 function historyFor(runs: PipelineRun[]): Tower["history"] {

@@ -20,7 +20,7 @@ export interface TowerVisual {
 }
 
 /** The kit models are authored at these sizes; districts use slightly smaller footprints. */
-const HQ_SCALE = 0.85;
+const HQ_SCALE = 1;
 const PLAZA_MODEL_RADIUS = 3;
 const NURSERY_MODEL_RADIUS = 2;
 /** Grass tops sit a hair above y = 0; lift ground pieces so they never z-fight. */

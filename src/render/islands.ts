@@ -57,7 +57,7 @@ function createIslandGeometry(island: Island): { grass: THREE.BufferGeometry; ro
   // island size. Jittered rings narrowing downwards give the broken rock look.
   const rockPositions: number[] = [];
   const rockIndices: number[] = [];
-  const depth = Math.max(island.size.x, island.size.z) * seededRange(island.seed, 63, 0.6, 0.85);
+  const depth = Math.max(island.size.x, island.size.z) * seededRange(island.seed, 63, 0.45, 0.6);
   const rings: readonly (readonly [inset: number, drop: number])[] = [
     [0.96, 0],
     [0.84, 0.22],

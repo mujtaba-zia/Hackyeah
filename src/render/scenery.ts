@@ -67,7 +67,7 @@ export function isSceneryPlacementFree(
  */
 export function placeScenery(island: Island, reservations: SceneryReservations): SceneryPlacement[] {
   const placements: SceneryPlacement[] = [];
-  const target = island.kind === "filler" ? 10 : 14;
+  const target = island.kind === "filler" ? 18 : 26;
   const attempts = target * 8;
 
   for (let index = 0; index < attempts && placements.length < target; index += 1) {
