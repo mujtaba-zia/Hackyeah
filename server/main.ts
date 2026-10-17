@@ -1,4 +1,4 @@
-import { createApp } from "./app";
+import { closeApp, createApp } from "./app";
 import { loadServerEnvironment } from "./env";
 import { createGameState } from "./state";
 
@@ -12,9 +12,7 @@ function shutdown(): void {
   if (shuttingDown) return;
   shuttingDown = true;
   state.stop();
-  app.close(() => {
-    process.exit(0);
-  });
+  void closeApp(app).then(() => process.exit(0));
 }
 
 process.once("SIGINT", shutdown);
