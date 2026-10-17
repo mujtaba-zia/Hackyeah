@@ -16,6 +16,7 @@ from mathutils import Vector
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import models_buildings  # noqa: E402
+import models_towers  # noqa: E402
 import models_nature  # noqa: E402
 
 
@@ -31,8 +32,14 @@ def build_all():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     return [
         models_buildings.town_hall(),
-        models_buildings.ci_tower(),
-        models_buildings.release_tower(),
+        models_towers.ci_tower(),
+        models_towers.ci_tower_foundation(),
+        models_towers.ci_tower_building(),
+        models_towers.ci_tower_broken(),
+        models_towers.release_tower(),
+        models_towers.release_tower_foundation(),
+        models_towers.release_tower_building(),
+        models_towers.release_tower_broken(),
         models_nature.plaza(),
         models_nature.nursery(),
         models_nature.creature(),
