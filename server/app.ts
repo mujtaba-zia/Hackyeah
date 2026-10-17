@@ -162,6 +162,10 @@ function validMockOp(value: unknown): value is MockOp {
     return hasOnlyKeys(value, { kind: true, repoId: true, draft: true }) &&
       typeof value.repoId === "string" && value.repoId.length > 0 && typeof value.draft === "boolean";
   }
+  if (value.kind === "addPipeline") {
+    return hasOnlyKeys(value, { kind: true, repoId: true, release: true }) &&
+      typeof value.repoId === "string" && value.repoId.length > 0 && typeof value.release === "boolean";
+  }
   if (value.kind === "agePullRequests") {
     return hasOnlyKeys(value, { kind: true, days: true }) && isFiniteNumber(value.days) && value.days >= 0;
   }
