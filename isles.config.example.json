@@ -1,7 +1,7 @@
 {
-  "watch": ["mock:payments", "mock:catalog"],
+  "watch": ["payments", "Contoso/catalog", "gh:octo-org/web-app"],
   "coverage": {
-    "Platform Integration": ["Catalog"]
+    "Platform Integration": ["catalog", "payments"]
   },
   "thresholds": {
     "staleDays": 7,
@@ -20,7 +20,7 @@
     "staleRelease": true,
     "meltdown": true
   },
-  "pollSeconds": 30,
+  "pollSeconds": 60,
   "maxRepos": 12,
   "maxPrsPerRepo": 40
 }
