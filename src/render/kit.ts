@@ -22,6 +22,12 @@ export const KIT_MODELS = [
   "rock_1",
   "rock_2",
   "rock_3",
+  "bush_1",
+  "bush_2",
+  "flowers_1",
+  "flowers_2",
+  "waystation",
+  "giant",
 ] as const;
 
 export type KitModel = (typeof KIT_MODELS)[number];
@@ -32,8 +38,12 @@ export interface KitPart {
   material: THREE.Material;
 }
 
-/** Material names the renderer swaps per entity (health, pipeline status, PR mood). */
-export type RecolouredMaterial = "Accent" | "Beacon" | "Body";
+/**
+ * Material names the renderer swaps per entity: `Accent` is a district's
+ * health, `Status` and `Beacon` a pipeline's latest run (as paint and as
+ * light), `Body` a pull request's mood.
+ */
+export type RecolouredMaterial = "Accent" | "Status" | "Beacon" | "Body";
 
 export class ModelKit {
   private readonly models: Record<KitModel, readonly KitPart[]>;
@@ -42,8 +52,12 @@ export class ModelKit {
     this.models = models;
   }
 
-  parts(model: KitModel): readonly KitPart[] {
-    return this.models[model];
+  /** A model's parts, with the materials named in `swap` replaced. */
+  parts(model: KitModel, swap: Partial<Record<RecolouredMaterial, THREE.Material>> = {}): readonly KitPart[] {
+    return this.models[model].map((part) => {
+      const override = swap[part.material.name as RecolouredMaterial];
+      return override ? { geometry: part.geometry, material: override } : part;
+    });
   }
 
   /** Highest point of a model, in model units. */
@@ -56,37 +70,10 @@ export class ModelKit {
     return this.bounds(model, (part) => part.material.name === "Beacon").getCenter(new THREE.Vector3());
   }
 
-  private bounds(model: KitModel, include: (part: KitPart) => boolean): THREE.Box3 {
-    const box = new THREE.Box3();
-    for (const part of this.models[model]) {
-      if (!include(part)) continue;
-      part.geometry.computeBoundingBox();
-      if (part.geometry.boundingBox) box.union(part.geometry.boundingBox);
-    }
-    if (box.isEmpty()) throw new Error(`model-kit: ${model} has no matching parts`);
-    return box;
-  }
   template(model: KitModel, name: RecolouredMaterial): THREE.Material {
     const part = this.models[model].find((candidate) => candidate.material.name === name);
     if (!part) throw new Error(`model-kit: ${model} has no ${name} material`);
     return part.material;
-  }
-
-  /**
-   * A fresh object tree for one model. Geometry and untouched materials are
-   * shared across every instance; materials named in `swap` are replaced.
-   */
-  create(model: KitModel, swap: Partial<Record<RecolouredMaterial, THREE.Material>> = {}): THREE.Group {
-    const group = new THREE.Group();
-    group.name = `kit:${model}`;
-    for (const part of this.models[model]) {
-      const name = part.material.name;
-      const override = name === "Accent" || name === "Beacon" || name === "Body" ? swap[name] : undefined;
-      const mesh = new THREE.Mesh(part.geometry, override ?? part.material);
-      mesh.name = name;
-      group.add(mesh);
-    }
-    return group;
   }
 
   dispose(): void {
@@ -98,6 +85,17 @@ export class ModelKit {
       }
     }
     for (const material of materials) material.dispose();
+  }
+
+  private bounds(model: KitModel, include: (part: KitPart) => boolean): THREE.Box3 {
+    const box = new THREE.Box3();
+    for (const part of this.models[model]) {
+      if (!include(part)) continue;
+      part.geometry.computeBoundingBox();
+      if (part.geometry.boundingBox) box.union(part.geometry.boundingBox);
+    }
+    if (box.isEmpty()) throw new Error(`model-kit: ${model} has no matching parts`);
+    return box;
   }
 }
 

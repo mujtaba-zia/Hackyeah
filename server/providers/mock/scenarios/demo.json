@@ -2,11 +2,17 @@
   "repos": [
     { "id": "mock:payments", "name": "Payments", "project": "Harbor" },
     { "id": "mock:catalog", "name": "Catalog", "project": "Harbor" },
+    { "id": "mock:checkout", "name": "Checkout", "project": "Harbor" },
     { "id": "mock:identity", "name": "Identity", "project": "Northstar" },
-    { "id": "mock:mobile", "name": "Mobile", "project": "Northstar" }
+    { "id": "mock:mobile", "name": "Mobile", "project": "Northstar" },
+    { "id": "mock:web-app", "name": "Web App", "project": "Northstar" },
+    { "id": "mock:infra", "name": "Infra", "project": "Platform" },
+    { "id": "mock:design-system", "name": "Design System", "project": "Platform" }
   ],
   "pullRequests": [
     { "id": "mock:pr:payments:104", "repoId": "mock:payments", "number": 104, "title": "Reconcile delayed invoices", "author": "Leah Gomez", "draft": false, "ageHours": 220, "reviewers": 2, "verdict": "none", "hasConflicts": false, "checks": "failure" },
+    { "id": "mock:pr:payments:108", "repoId": "mock:payments", "number": 108, "title": "Retry declined cards once", "author": "Omar Reyes", "draft": false, "ageHours": 5, "reviewers": 2, "verdict": "approved", "hasConflicts": false, "checks": "success" },
+    { "id": "mock:pr:payments:109", "repoId": "mock:payments", "number": 109, "title": "Split settlement report by region", "author": "Jo Lindqvist", "draft": false, "ageHours": 3, "reviewers": 1, "verdict": "none", "hasConflicts": false, "checks": "pending" },
     { "id": "mock:pr:identity:81", "repoId": "mock:identity", "number": 81, "title": "Add passkey recovery", "author": "Ari Kim", "draft": false, "ageHours": 42, "reviewers": 3, "verdict": "none", "hasConflicts": false, "checks": "pending" },
     { "id": "mock:pr:identity:82", "repoId": "mock:identity", "number": 82, "title": "Rotate session cookies", "author": "Samir Shah", "draft": false, "ageHours": 36, "reviewers": 2, "verdict": "waitingOnAuthor", "hasConflicts": false, "checks": "success" },
     { "id": "mock:pr:identity:83", "repoId": "mock:identity", "number": 83, "title": "Audit device approvals", "author": "Mina Holt", "draft": false, "ageHours": 31, "reviewers": 2, "verdict": "changesRequested", "hasConflicts": false, "checks": "success" },
@@ -16,39 +22,332 @@
     { "id": "mock:pr:catalog:52", "repoId": "mock:catalog", "number": 52, "title": "Refresh search facets", "author": "Eli Turner", "draft": true, "ageHours": 10, "reviewers": 0, "verdict": "none", "hasConflicts": false, "checks": "none" },
     { "id": "mock:pr:catalog:53", "repoId": "mock:catalog", "number": 53, "title": "Add supplier notes", "author": "Nia Cole", "draft": true, "ageHours": 8, "reviewers": 0, "verdict": "none", "hasConflicts": false, "checks": "none" },
     { "id": "mock:pr:catalog:54", "repoId": "mock:catalog", "number": 54, "title": "Sort discontinued products", "author": "Owen Lee", "draft": true, "ageHours": 7, "reviewers": 0, "verdict": "none", "hasConflicts": false, "checks": "none" },
-    { "id": "mock:pr:catalog:55", "repoId": "mock:catalog", "number": 55, "title": "Improve category aliases", "author": "Kira Vale", "draft": true, "ageHours": 5, "reviewers": 0, "verdict": "none", "hasConflicts": false, "checks": "none" }
+    { "id": "mock:pr:catalog:55", "repoId": "mock:catalog", "number": 55, "title": "Improve category aliases", "author": "Kira Vale", "draft": true, "ageHours": 5, "reviewers": 0, "verdict": "none", "hasConflicts": false, "checks": "none" },
+    { "id": "mock:pr:catalog:57", "repoId": "mock:catalog", "number": 57, "title": "Speed up variant lookups", "author": "Eli Turner", "draft": false, "ageHours": 9, "reviewers": 2, "verdict": "approved", "hasConflicts": false, "checks": "success" },
+    { "id": "mock:pr:checkout:212", "repoId": "mock:checkout", "number": 212, "title": "Show delivery estimates earlier", "author": "Hana Mori", "draft": false, "ageHours": 4, "reviewers": 2, "verdict": "approved", "hasConflicts": false, "checks": "success" },
+    { "id": "mock:pr:checkout:214", "repoId": "mock:checkout", "number": 214, "title": "Remember the last used address", "author": "Ravi Menon", "draft": false, "ageHours": 11, "reviewers": 1, "verdict": "none", "hasConflicts": false, "checks": "pending" },
+    { "id": "mock:pr:mobile:340", "repoId": "mock:mobile", "number": 340, "title": "Offline mode for saved items", "author": "Chris Bell", "draft": false, "ageHours": 14, "reviewers": 2, "verdict": "none", "hasConflicts": false, "checks": "success" },
+    { "id": "mock:pr:mobile:342", "repoId": "mock:mobile", "number": 342, "title": "Fix tab bar on small phones", "author": "Dana Park", "draft": false, "ageHours": 2, "reviewers": 1, "verdict": "none", "hasConflicts": true, "checks": "success" },
+    { "id": "mock:pr:mobile:343", "repoId": "mock:mobile", "number": 343, "title": "Haptics for pull to refresh", "author": "Chris Bell", "draft": true, "ageHours": 20, "reviewers": 0, "verdict": "none", "hasConflicts": false, "checks": "none" },
+    { "id": "mock:pr:web-app:77", "repoId": "mock:web-app", "number": 77, "title": "Lazy-load the dashboard charts", "author": "Ines Novak", "draft": false, "ageHours": 7, "reviewers": 2, "verdict": "approved", "hasConflicts": false, "checks": "success" },
+    { "id": "mock:pr:web-app:78", "repoId": "mock:web-app", "number": 78, "title": "Keyboard shortcuts for search", "author": "Tom Adler", "draft": false, "ageHours": 19, "reviewers": 1, "verdict": "none", "hasConflicts": false, "checks": "pending" },
+    { "id": "mock:pr:web-app:80", "repoId": "mock:web-app", "number": 80, "title": "Dark theme contrast pass", "author": "Ines Novak", "draft": true, "ageHours": 30, "reviewers": 0, "verdict": "none", "hasConflicts": false, "checks": "none" },
+    { "id": "mock:pr:infra:19", "repoId": "mock:infra", "number": 19, "title": "Pin base images by digest", "author": "Sol Varga", "draft": false, "ageHours": 8, "reviewers": 2, "verdict": "approved", "hasConflicts": false, "checks": "success" },
+    { "id": "mock:pr:infra:21", "repoId": "mock:infra", "number": 21, "title": "Autoscale the build runners", "author": "Mei Tanaka", "draft": false, "ageHours": 26, "reviewers": 2, "verdict": "changesRequested", "hasConflicts": false, "checks": "success" },
+    { "id": "mock:pr:design-system:63", "repoId": "mock:design-system", "number": 63, "title": "New focus ring tokens", "author": "Lena Fox", "draft": false, "ageHours": 6, "reviewers": 1, "verdict": "approved", "hasConflicts": false, "checks": "success" }
   ],
   "pipelines": [
     {
-      "id": "mock:pipeline:platform-integration",
-      "name": "Platform Integration",
-      "homeRepoId": "mock:payments",
-      "coversRepoIds": ["mock:payments", "mock:catalog"],
-      "kind": "ci",
+      "id": "mock:pipeline:platform-integration", "name": "Platform Integration", "homeRepoId": "mock:payments", "coversRepoIds": ["mock:payments", "mock:catalog"], "kind": "ci",
       "runs": [
-        { "id": "mock:run:platform:18", "result": "failure", "ageHours": 1 },
-        { "id": "mock:run:platform:17", "result": "success", "ageHours": 30 }
+        { "id": "mock:run:platform:18", "result": "failure", "ageHours": 1, "minutes": 18, "branch": "main" },
+        { "id": "mock:run:platform:17", "result": "success", "ageHours": 15, "minutes": 20, "branch": "main" },
+        { "id": "mock:run:platform-integration:6", "result": "success", "ageHours": 29, "minutes": 22, "branch": "main" },
+        { "id": "mock:run:platform-integration:5", "result": "success", "ageHours": 43, "minutes": 19, "branch": "main" },
+        { "id": "mock:run:platform-integration:4", "result": "failure", "ageHours": 57, "minutes": 21, "branch": "main" },
+        { "id": "mock:run:platform-integration:3", "result": "success", "ageHours": 71, "minutes": 18, "branch": "main" },
+        { "id": "mock:run:platform-integration:2", "result": "success", "ageHours": 85, "minutes": 20, "branch": "main" },
+        { "id": "mock:run:platform-integration:1", "result": "success", "ageHours": 99, "minutes": 22, "branch": "main" }
       ]
     },
     {
-      "id": "mock:pipeline:identity-release",
-      "name": "Identity Release",
-      "homeRepoId": "mock:identity",
-      "coversRepoIds": ["mock:identity"],
-      "kind": "release",
+      "id": "mock:pipeline:payments-ci", "name": "Payments CI", "homeRepoId": "mock:payments", "coversRepoIds": ["mock:payments"], "kind": "ci",
       "runs": [
-        { "id": "mock:run:identity-release:8", "result": "partial", "ageHours": 72 },
-        { "id": "mock:run:identity-release:7", "result": "success", "ageHours": 500 }
+        { "id": "mock:run:payments-ci:10", "result": "success", "ageHours": 2, "minutes": 7, "branch": "main" },
+        { "id": "mock:run:payments-ci:9", "result": "success", "ageHours": 7, "minutes": 9, "branch": "main" },
+        { "id": "mock:run:payments-ci:8", "result": "success", "ageHours": 12, "minutes": 11, "branch": "main" },
+        { "id": "mock:run:payments-ci:7", "result": "success", "ageHours": 17, "minutes": 8, "branch": "main" },
+        { "id": "mock:run:payments-ci:6", "result": "success", "ageHours": 22, "minutes": 10, "branch": "main" },
+        { "id": "mock:run:payments-ci:5", "result": "failure", "ageHours": 27, "minutes": 7, "branch": "main" },
+        { "id": "mock:run:payments-ci:4", "result": "success", "ageHours": 32, "minutes": 9, "branch": "main" },
+        { "id": "mock:run:payments-ci:3", "result": "success", "ageHours": 37, "minutes": 11, "branch": "main" },
+        { "id": "mock:run:payments-ci:2", "result": "success", "ageHours": 42, "minutes": 8, "branch": "main" },
+        { "id": "mock:run:payments-ci:1", "result": "success", "ageHours": 47, "minutes": 10, "branch": "main" }
       ]
     },
     {
-      "id": "mock:pipeline:mobile-ci",
-      "name": "Mobile CI",
-      "homeRepoId": "mock:mobile",
-      "coversRepoIds": ["mock:mobile"],
-      "kind": "ci",
+      "id": "mock:pipeline:fraud-checks", "name": "Fraud Checks", "homeRepoId": "mock:payments", "coversRepoIds": ["mock:payments"], "kind": "ci",
       "runs": [
-        { "id": "mock:run:mobile:41", "result": "success", "ageHours": 3 }
+        { "id": "mock:run:fraud-checks:8", "result": "success", "ageHours": 4, "minutes": 11, "branch": "main" },
+        { "id": "mock:run:fraud-checks:7", "result": "success", "ageHours": 16, "minutes": 13, "branch": "main" },
+        { "id": "mock:run:fraud-checks:6", "result": "success", "ageHours": 28, "minutes": 15, "branch": "main" },
+        { "id": "mock:run:fraud-checks:5", "result": "success", "ageHours": 40, "minutes": 12, "branch": "main" },
+        { "id": "mock:run:fraud-checks:4", "result": "success", "ageHours": 52, "minutes": 14, "branch": "main" },
+        { "id": "mock:run:fraud-checks:3", "result": "success", "ageHours": 64, "minutes": 11, "branch": "main" },
+        { "id": "mock:run:fraud-checks:2", "result": "success", "ageHours": 76, "minutes": 13, "branch": "main" },
+        { "id": "mock:run:fraud-checks:1", "result": "success", "ageHours": 88, "minutes": 15, "branch": "main" }
+      ]
+    },
+    {
+      "id": "mock:pipeline:payments-release", "name": "Payments Release", "homeRepoId": "mock:payments", "coversRepoIds": ["mock:payments"], "kind": "release",
+      "runs": [
+        { "id": "mock:run:payments-release:5", "result": "success", "ageHours": 20, "minutes": 14, "branch": "main" },
+        { "id": "mock:run:payments-release:4", "result": "success", "ageHours": 90, "minutes": 16, "branch": "main" },
+        { "id": "mock:run:payments-release:3", "result": "success", "ageHours": 160, "minutes": 18, "branch": "main" },
+        { "id": "mock:run:payments-release:2", "result": "partial", "ageHours": 230, "minutes": 15, "branch": "main" },
+        { "id": "mock:run:payments-release:1", "result": "success", "ageHours": 300, "minutes": 17, "branch": "main" }
+      ]
+    },
+    {
+      "id": "mock:pipeline:catalog-ci", "name": "Catalog CI", "homeRepoId": "mock:catalog", "coversRepoIds": ["mock:catalog"], "kind": "ci",
+      "runs": [
+        { "id": "mock:run:catalog-ci:10", "result": "success", "ageHours": 1.5, "minutes": 5, "branch": "main" },
+        { "id": "mock:run:catalog-ci:9", "result": "success", "ageHours": 7.5, "minutes": 7, "branch": "main" },
+        { "id": "mock:run:catalog-ci:8", "result": "success", "ageHours": 13.5, "minutes": 9, "branch": "main" },
+        { "id": "mock:run:catalog-ci:7", "result": "success", "ageHours": 19.5, "minutes": 6, "branch": "main" },
+        { "id": "mock:run:catalog-ci:6", "result": "success", "ageHours": 25.5, "minutes": 8, "branch": "main" },
+        { "id": "mock:run:catalog-ci:5", "result": "success", "ageHours": 31.5, "minutes": 5, "branch": "main" },
+        { "id": "mock:run:catalog-ci:4", "result": "success", "ageHours": 37.5, "minutes": 7, "branch": "main" },
+        { "id": "mock:run:catalog-ci:3", "result": "success", "ageHours": 43.5, "minutes": 9, "branch": "main" },
+        { "id": "mock:run:catalog-ci:2", "result": "success", "ageHours": 49.5, "minutes": 6, "branch": "main" },
+        { "id": "mock:run:catalog-ci:1", "result": "success", "ageHours": 55.5, "minutes": 8, "branch": "main" }
+      ]
+    },
+    {
+      "id": "mock:pipeline:search-index", "name": "Search Index", "homeRepoId": "mock:catalog", "coversRepoIds": ["mock:catalog"], "kind": "ci",
+      "runs": [
+        { "id": "mock:run:search-index:6", "result": "running", "ageHours": 0.1, "branch": "main" },
+        { "id": "mock:run:search-index:5", "result": "success", "ageHours": 12.1, "minutes": 24, "branch": "main" },
+        { "id": "mock:run:search-index:4", "result": "success", "ageHours": 24.1, "minutes": 26, "branch": "main" },
+        { "id": "mock:run:search-index:3", "result": "success", "ageHours": 36.1, "minutes": 23, "branch": "main" },
+        { "id": "mock:run:search-index:2", "result": "success", "ageHours": 48.1, "minutes": 25, "branch": "main" },
+        { "id": "mock:run:search-index:1", "result": "success", "ageHours": 60.1, "minutes": 22, "branch": "main" }
+      ]
+    },
+    {
+      "id": "mock:pipeline:catalog-release", "name": "Catalog Release", "homeRepoId": "mock:catalog", "coversRepoIds": ["mock:catalog"], "kind": "release",
+      "runs": [
+        { "id": "mock:run:catalog-release:4", "result": "success", "ageHours": 30, "minutes": 9, "branch": "main" },
+        { "id": "mock:run:catalog-release:3", "result": "success", "ageHours": 120, "minutes": 11, "branch": "main" },
+        { "id": "mock:run:catalog-release:2", "result": "success", "ageHours": 210, "minutes": 13, "branch": "main" },
+        { "id": "mock:run:catalog-release:1", "result": "success", "ageHours": 300, "minutes": 10, "branch": "main" }
+      ]
+    },
+    {
+      "id": "mock:pipeline:checkout-ci", "name": "Checkout CI", "homeRepoId": "mock:checkout", "coversRepoIds": ["mock:checkout"], "kind": "ci",
+      "runs": [
+        { "id": "mock:run:checkout-ci:10", "result": "success", "ageHours": 0.5, "minutes": 6, "branch": "main" },
+        { "id": "mock:run:checkout-ci:9", "result": "success", "ageHours": 4.5, "minutes": 8, "branch": "main" },
+        { "id": "mock:run:checkout-ci:8", "result": "success", "ageHours": 8.5, "minutes": 10, "branch": "main" },
+        { "id": "mock:run:checkout-ci:7", "result": "success", "ageHours": 12.5, "minutes": 7, "branch": "main" },
+        { "id": "mock:run:checkout-ci:6", "result": "success", "ageHours": 16.5, "minutes": 9, "branch": "main" },
+        { "id": "mock:run:checkout-ci:5", "result": "success", "ageHours": 20.5, "minutes": 6, "branch": "main" },
+        { "id": "mock:run:checkout-ci:4", "result": "success", "ageHours": 24.5, "minutes": 8, "branch": "main" },
+        { "id": "mock:run:checkout-ci:3", "result": "success", "ageHours": 28.5, "minutes": 10, "branch": "main" },
+        { "id": "mock:run:checkout-ci:2", "result": "success", "ageHours": 32.5, "minutes": 7, "branch": "main" },
+        { "id": "mock:run:checkout-ci:1", "result": "success", "ageHours": 36.5, "minutes": 9, "branch": "main" }
+      ]
+    },
+    {
+      "id": "mock:pipeline:checkout-e2e", "name": "Checkout E2E", "homeRepoId": "mock:checkout", "coversRepoIds": ["mock:checkout"], "kind": "ci",
+      "runs": [
+        { "id": "mock:run:checkout-e2e:8", "result": "success", "ageHours": 3, "minutes": 25, "branch": "main" },
+        { "id": "mock:run:checkout-e2e:7", "result": "success", "ageHours": 13, "minutes": 27, "branch": "main" },
+        { "id": "mock:run:checkout-e2e:6", "result": "failure", "ageHours": 23, "minutes": 29, "branch": "main" },
+        { "id": "mock:run:checkout-e2e:5", "result": "success", "ageHours": 33, "minutes": 26, "branch": "main" },
+        { "id": "mock:run:checkout-e2e:4", "result": "success", "ageHours": 43, "minutes": 28, "branch": "main" },
+        { "id": "mock:run:checkout-e2e:3", "result": "success", "ageHours": 53, "minutes": 25, "branch": "main" },
+        { "id": "mock:run:checkout-e2e:2", "result": "success", "ageHours": 63, "minutes": 27, "branch": "main" },
+        { "id": "mock:run:checkout-e2e:1", "result": "success", "ageHours": 73, "minutes": 29, "branch": "main" }
+      ]
+    },
+    {
+      "id": "mock:pipeline:checkout-release", "name": "Checkout Release", "homeRepoId": "mock:checkout", "coversRepoIds": ["mock:checkout"], "kind": "release",
+      "runs": [
+        { "id": "mock:run:checkout-release:5", "result": "success", "ageHours": 12, "minutes": 12, "branch": "main" },
+        { "id": "mock:run:checkout-release:4", "result": "success", "ageHours": 60, "minutes": 14, "branch": "main" },
+        { "id": "mock:run:checkout-release:3", "result": "success", "ageHours": 108, "minutes": 16, "branch": "main" },
+        { "id": "mock:run:checkout-release:2", "result": "success", "ageHours": 156, "minutes": 13, "branch": "main" },
+        { "id": "mock:run:checkout-release:1", "result": "success", "ageHours": 204, "minutes": 15, "branch": "main" }
+      ]
+    },
+    {
+      "id": "mock:pipeline:identity-ci", "name": "Identity CI", "homeRepoId": "mock:identity", "coversRepoIds": ["mock:identity"], "kind": "ci",
+      "runs": [
+        { "id": "mock:run:identity-ci:9", "result": "success", "ageHours": 2, "minutes": 8, "branch": "main" },
+        { "id": "mock:run:identity-ci:8", "result": "success", "ageHours": 9, "minutes": 10, "branch": "main" },
+        { "id": "mock:run:identity-ci:7", "result": "success", "ageHours": 16, "minutes": 12, "branch": "main" },
+        { "id": "mock:run:identity-ci:6", "result": "success", "ageHours": 23, "minutes": 9, "branch": "main" },
+        { "id": "mock:run:identity-ci:5", "result": "success", "ageHours": 30, "minutes": 11, "branch": "main" },
+        { "id": "mock:run:identity-ci:4", "result": "success", "ageHours": 37, "minutes": 8, "branch": "main" },
+        { "id": "mock:run:identity-ci:3", "result": "success", "ageHours": 44, "minutes": 10, "branch": "main" },
+        { "id": "mock:run:identity-ci:2", "result": "success", "ageHours": 51, "minutes": 12, "branch": "main" },
+        { "id": "mock:run:identity-ci:1", "result": "success", "ageHours": 58, "minutes": 9, "branch": "main" }
+      ]
+    },
+    {
+      "id": "mock:pipeline:security-scan", "name": "Security Scan", "homeRepoId": "mock:identity", "coversRepoIds": ["mock:identity"], "kind": "ci",
+      "runs": [
+        { "id": "mock:run:security-scan:5", "result": "queued", "ageHours": 0.2, "branch": "main" },
+        { "id": "mock:run:security-scan:4", "result": "success", "ageHours": 24.2, "minutes": 18, "branch": "main" },
+        { "id": "mock:run:security-scan:3", "result": "success", "ageHours": 48.2, "minutes": 20, "branch": "main" },
+        { "id": "mock:run:security-scan:2", "result": "success", "ageHours": 72.2, "minutes": 17, "branch": "main" },
+        { "id": "mock:run:security-scan:1", "result": "success", "ageHours": 96.2, "minutes": 19, "branch": "main" }
+      ]
+    },
+    {
+      "id": "mock:pipeline:identity-release", "name": "Identity Release", "homeRepoId": "mock:identity", "coversRepoIds": ["mock:identity"], "kind": "release",
+      "runs": [
+        { "id": "mock:run:identity-release:2", "result": "partial", "ageHours": 72, "minutes": 15, "branch": "main" },
+        { "id": "mock:run:identity-release:1", "result": "success", "ageHours": 500, "minutes": 17, "branch": "main" }
+      ]
+    },
+    {
+      "id": "mock:pipeline:mobile-ci", "name": "Mobile CI", "homeRepoId": "mock:mobile", "coversRepoIds": ["mock:mobile"], "kind": "ci",
+      "runs": [
+        { "id": "mock:run:mobile-ci:8", "result": "success", "ageHours": 3, "minutes": 12, "branch": "main" },
+        { "id": "mock:run:mobile-ci:7", "result": "success", "ageHours": 9, "minutes": 14, "branch": "main" },
+        { "id": "mock:run:mobile-ci:6", "result": "success", "ageHours": 15, "minutes": 16, "branch": "main" },
+        { "id": "mock:run:mobile-ci:5", "result": "success", "ageHours": 21, "minutes": 13, "branch": "main" },
+        { "id": "mock:run:mobile-ci:4", "result": "success", "ageHours": 27, "minutes": 15, "branch": "main" },
+        { "id": "mock:run:mobile-ci:3", "result": "success", "ageHours": 33, "minutes": 12, "branch": "main" },
+        { "id": "mock:run:mobile-ci:2", "result": "success", "ageHours": 39, "minutes": 14, "branch": "main" },
+        { "id": "mock:run:mobile-ci:1", "result": "success", "ageHours": 45, "minutes": 16, "branch": "main" }
+      ]
+    },
+    {
+      "id": "mock:pipeline:mobile-nightly", "name": "Mobile Nightly", "homeRepoId": "mock:mobile", "coversRepoIds": ["mock:mobile"], "kind": "ci",
+      "runs": [
+        { "id": "mock:run:mobile-nightly:7", "result": "cancelled", "ageHours": 9, "minutes": 40, "branch": "main" },
+        { "id": "mock:run:mobile-nightly:6", "result": "success", "ageHours": 33, "minutes": 42, "branch": "main" },
+        { "id": "mock:run:mobile-nightly:5", "result": "success", "ageHours": 57, "minutes": 44, "branch": "main" },
+        { "id": "mock:run:mobile-nightly:4", "result": "success", "ageHours": 81, "minutes": 41, "branch": "main" },
+        { "id": "mock:run:mobile-nightly:3", "result": "success", "ageHours": 105, "minutes": 43, "branch": "main" },
+        { "id": "mock:run:mobile-nightly:2", "result": "success", "ageHours": 129, "minutes": 40, "branch": "main" },
+        { "id": "mock:run:mobile-nightly:1", "result": "success", "ageHours": 153, "minutes": 42, "branch": "main" }
+      ]
+    },
+    {
+      "id": "mock:pipeline:ios-release", "name": "iOS Release", "homeRepoId": "mock:mobile", "coversRepoIds": ["mock:mobile"], "kind": "release",
+      "runs": [
+        { "id": "mock:run:ios-release:4", "result": "success", "ageHours": 26, "minutes": 35, "branch": "main" },
+        { "id": "mock:run:ios-release:3", "result": "success", "ageHours": 146, "minutes": 37, "branch": "main" },
+        { "id": "mock:run:ios-release:2", "result": "success", "ageHours": 266, "minutes": 39, "branch": "main" },
+        { "id": "mock:run:ios-release:1", "result": "success", "ageHours": 386, "minutes": 36, "branch": "main" }
+      ]
+    },
+    {
+      "id": "mock:pipeline:android-release", "name": "Android Release", "homeRepoId": "mock:mobile", "coversRepoIds": ["mock:mobile"], "kind": "release",
+      "runs": [
+        { "id": "mock:run:android-release:4", "result": "running", "ageHours": 0.3, "branch": "main" },
+        { "id": "mock:run:android-release:3", "result": "success", "ageHours": 110.3, "minutes": 32, "branch": "main" },
+        { "id": "mock:run:android-release:2", "result": "success", "ageHours": 220.3, "minutes": 34, "branch": "main" },
+        { "id": "mock:run:android-release:1", "result": "success", "ageHours": 330.3, "minutes": 31, "branch": "main" }
+      ]
+    },
+    {
+      "id": "mock:pipeline:web-ci", "name": "Web CI", "homeRepoId": "mock:web-app", "coversRepoIds": ["mock:web-app"], "kind": "ci",
+      "runs": [
+        { "id": "mock:run:web-ci:10", "result": "success", "ageHours": 1, "minutes": 4, "branch": "main" },
+        { "id": "mock:run:web-ci:9", "result": "success", "ageHours": 4, "minutes": 6, "branch": "main" },
+        { "id": "mock:run:web-ci:8", "result": "success", "ageHours": 7, "minutes": 8, "branch": "main" },
+        { "id": "mock:run:web-ci:7", "result": "success", "ageHours": 10, "minutes": 5, "branch": "main" },
+        { "id": "mock:run:web-ci:6", "result": "success", "ageHours": 13, "minutes": 7, "branch": "main" },
+        { "id": "mock:run:web-ci:5", "result": "success", "ageHours": 16, "minutes": 4, "branch": "main" },
+        { "id": "mock:run:web-ci:4", "result": "success", "ageHours": 19, "minutes": 6, "branch": "main" },
+        { "id": "mock:run:web-ci:3", "result": "success", "ageHours": 22, "minutes": 8, "branch": "main" },
+        { "id": "mock:run:web-ci:2", "result": "success", "ageHours": 25, "minutes": 5, "branch": "main" },
+        { "id": "mock:run:web-ci:1", "result": "success", "ageHours": 28, "minutes": 7, "branch": "main" }
+      ]
+    },
+    {
+      "id": "mock:pipeline:web-e2e", "name": "Web E2E", "homeRepoId": "mock:web-app", "coversRepoIds": ["mock:web-app"], "kind": "ci",
+      "runs": [
+        { "id": "mock:run:web-e2e:8", "result": "success", "ageHours": 2, "minutes": 19, "branch": "main" },
+        { "id": "mock:run:web-e2e:7", "result": "success", "ageHours": 10, "minutes": 21, "branch": "main" },
+        { "id": "mock:run:web-e2e:6", "result": "success", "ageHours": 18, "minutes": 23, "branch": "main" },
+        { "id": "mock:run:web-e2e:5", "result": "success", "ageHours": 26, "minutes": 20, "branch": "main" },
+        { "id": "mock:run:web-e2e:4", "result": "success", "ageHours": 34, "minutes": 22, "branch": "main" },
+        { "id": "mock:run:web-e2e:3", "result": "partial", "ageHours": 42, "minutes": 19, "branch": "main" },
+        { "id": "mock:run:web-e2e:2", "result": "success", "ageHours": 50, "minutes": 21, "branch": "main" },
+        { "id": "mock:run:web-e2e:1", "result": "success", "ageHours": 58, "minutes": 23, "branch": "main" }
+      ]
+    },
+    {
+      "id": "mock:pipeline:web-deploy", "name": "Web Deploy", "homeRepoId": "mock:web-app", "coversRepoIds": ["mock:web-app"], "kind": "release",
+      "runs": [
+        { "id": "mock:run:web-deploy:6", "result": "success", "ageHours": 6, "minutes": 5, "branch": "main" },
+        { "id": "mock:run:web-deploy:5", "result": "success", "ageHours": 36, "minutes": 7, "branch": "main" },
+        { "id": "mock:run:web-deploy:4", "result": "success", "ageHours": 66, "minutes": 9, "branch": "main" },
+        { "id": "mock:run:web-deploy:3", "result": "success", "ageHours": 96, "minutes": 6, "branch": "main" },
+        { "id": "mock:run:web-deploy:2", "result": "success", "ageHours": 126, "minutes": 8, "branch": "main" },
+        { "id": "mock:run:web-deploy:1", "result": "success", "ageHours": 156, "minutes": 5, "branch": "main" }
+      ]
+    },
+    {
+      "id": "mock:pipeline:terraform-plan", "name": "Terraform Plan", "homeRepoId": "mock:infra", "coversRepoIds": ["mock:infra"], "kind": "ci",
+      "runs": [
+        { "id": "mock:run:terraform-plan:8", "result": "success", "ageHours": 1, "minutes": 3, "branch": "main" },
+        { "id": "mock:run:terraform-plan:7", "result": "success", "ageHours": 9, "minutes": 5, "branch": "main" },
+        { "id": "mock:run:terraform-plan:6", "result": "success", "ageHours": 17, "minutes": 7, "branch": "main" },
+        { "id": "mock:run:terraform-plan:5", "result": "success", "ageHours": 25, "minutes": 4, "branch": "main" },
+        { "id": "mock:run:terraform-plan:4", "result": "success", "ageHours": 33, "minutes": 6, "branch": "main" },
+        { "id": "mock:run:terraform-plan:3", "result": "success", "ageHours": 41, "minutes": 3, "branch": "main" },
+        { "id": "mock:run:terraform-plan:2", "result": "success", "ageHours": 49, "minutes": 5, "branch": "main" },
+        { "id": "mock:run:terraform-plan:1", "result": "success", "ageHours": 57, "minutes": 7, "branch": "main" }
+      ]
+    },
+    {
+      "id": "mock:pipeline:image-build", "name": "Image Build", "homeRepoId": "mock:infra", "coversRepoIds": ["mock:infra"], "kind": "ci",
+      "runs": [
+        { "id": "mock:run:image-build:7", "result": "running", "ageHours": 0.2, "branch": "main" },
+        { "id": "mock:run:image-build:6", "result": "success", "ageHours": 12.2, "minutes": 16, "branch": "main" },
+        { "id": "mock:run:image-build:5", "result": "success", "ageHours": 24.2, "minutes": 18, "branch": "main" },
+        { "id": "mock:run:image-build:4", "result": "success", "ageHours": 36.2, "minutes": 15, "branch": "main" },
+        { "id": "mock:run:image-build:3", "result": "success", "ageHours": 48.2, "minutes": 17, "branch": "main" },
+        { "id": "mock:run:image-build:2", "result": "success", "ageHours": 60.2, "minutes": 14, "branch": "main" },
+        { "id": "mock:run:image-build:1", "result": "success", "ageHours": 72.2, "minutes": 16, "branch": "main" }
+      ]
+    },
+    {
+      "id": "mock:pipeline:policy-checks", "name": "Policy Checks", "homeRepoId": "mock:infra", "coversRepoIds": ["mock:infra"], "kind": "ci",
+      "runs": [
+        { "id": "mock:run:policy-checks:6", "result": "success", "ageHours": 5, "minutes": 2, "branch": "main" },
+        { "id": "mock:run:policy-checks:5", "result": "success", "ageHours": 17, "minutes": 4, "branch": "main" },
+        { "id": "mock:run:policy-checks:4", "result": "success", "ageHours": 29, "minutes": 6, "branch": "main" },
+        { "id": "mock:run:policy-checks:3", "result": "success", "ageHours": 41, "minutes": 3, "branch": "main" },
+        { "id": "mock:run:policy-checks:2", "result": "success", "ageHours": 53, "minutes": 5, "branch": "main" },
+        { "id": "mock:run:policy-checks:1", "result": "success", "ageHours": 65, "minutes": 2, "branch": "main" }
+      ]
+    },
+    {
+      "id": "mock:pipeline:cluster-upgrade", "name": "Cluster Upgrade", "homeRepoId": "mock:infra", "coversRepoIds": ["mock:infra"], "kind": "release",
+      "runs": [
+        { "id": "mock:run:cluster-upgrade:4", "result": "queued", "ageHours": 0.1, "branch": "main" },
+        { "id": "mock:run:cluster-upgrade:3", "result": "success", "ageHours": 150.1, "minutes": 57, "branch": "main" },
+        { "id": "mock:run:cluster-upgrade:2", "result": "success", "ageHours": 300.1, "minutes": 59, "branch": "main" },
+        { "id": "mock:run:cluster-upgrade:1", "result": "success", "ageHours": 450.1, "minutes": 56, "branch": "main" }
+      ]
+    },
+    {
+      "id": "mock:pipeline:infra-release", "name": "Infra Release", "homeRepoId": "mock:infra", "coversRepoIds": ["mock:infra"], "kind": "release",
+      "runs": [
+        { "id": "mock:run:infra-release:4", "result": "success", "ageHours": 40, "minutes": 20, "branch": "main" },
+        { "id": "mock:run:infra-release:3", "result": "success", "ageHours": 140, "minutes": 22, "branch": "main" },
+        { "id": "mock:run:infra-release:2", "result": "success", "ageHours": 240, "minutes": 24, "branch": "main" },
+        { "id": "mock:run:infra-release:1", "result": "success", "ageHours": 340, "minutes": 21, "branch": "main" }
+      ]
+    },
+    {
+      "id": "mock:pipeline:tokens-ci", "name": "Tokens CI", "homeRepoId": "mock:design-system", "coversRepoIds": ["mock:design-system"], "kind": "ci",
+      "runs": [
+        { "id": "mock:run:tokens-ci:7", "result": "success", "ageHours": 5, "minutes": 2, "branch": "main" },
+        { "id": "mock:run:tokens-ci:6", "result": "success", "ageHours": 20, "minutes": 4, "branch": "main" },
+        { "id": "mock:run:tokens-ci:5", "result": "success", "ageHours": 35, "minutes": 6, "branch": "main" },
+        { "id": "mock:run:tokens-ci:4", "result": "success", "ageHours": 50, "minutes": 3, "branch": "main" },
+        { "id": "mock:run:tokens-ci:3", "result": "success", "ageHours": 65, "minutes": 5, "branch": "main" },
+        { "id": "mock:run:tokens-ci:2", "result": "success", "ageHours": 80, "minutes": 2, "branch": "main" },
+        { "id": "mock:run:tokens-ci:1", "result": "success", "ageHours": 95, "minutes": 4, "branch": "main" }
+      ]
+    },
+    {
+      "id": "mock:pipeline:storybook-deploy", "name": "Storybook Deploy", "homeRepoId": "mock:design-system", "coversRepoIds": ["mock:design-system"], "kind": "release",
+      "runs": [
+        { "id": "mock:run:storybook-deploy:5", "result": "success", "ageHours": 5.5, "minutes": 6, "branch": "main" },
+        { "id": "mock:run:storybook-deploy:4", "result": "success", "ageHours": 45.5, "minutes": 8, "branch": "main" },
+        { "id": "mock:run:storybook-deploy:3", "result": "success", "ageHours": 85.5, "minutes": 10, "branch": "main" },
+        { "id": "mock:run:storybook-deploy:2", "result": "success", "ageHours": 125.5, "minutes": 7, "branch": "main" },
+        { "id": "mock:run:storybook-deploy:1", "result": "success", "ageHours": 165.5, "minutes": 9, "branch": "main" }
       ]
     }
   ]

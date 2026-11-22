@@ -21,6 +21,6 @@
     "meltdown": true
   },
   "pollSeconds": 60,
-  "maxRepos": 12,
+  "maxRepos": 24,
   "maxPrsPerRepo": 40
 }

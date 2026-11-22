@@ -35,7 +35,7 @@ export function staleRelease(context: RuleContext): Incident[] {
       title: `${tower.name} in ${place} has no recent success`,
       detail: `No successful release finished in the last ${releaseStaleDays} ${dayLabel}.`,
       effect: "smoke",
-      targets: { districts: [], towers: [tower.id], creatures: [] },
+      targets: { districts: tower.islandId === "outskirts" ? [] : [tower.islandId], towers: [tower.id], creatures: [] },
       focus: tower.position,
     });
   }

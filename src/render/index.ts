@@ -1,7 +1,7 @@
 import type { WorldView, WorldViewOptions } from "./contracts";
 import { WorldRenderer } from "./world";
 
-export type { PickTarget, WorldView, WorldViewOptions } from "./contracts";
+export type { PickTarget, ViewInsets, WorldView, WorldViewOptions } from "./contracts";
 export { loadModelKit, type ModelKit } from "./kit";
 
 function webglAvailable(canvas: HTMLCanvasElement): boolean {

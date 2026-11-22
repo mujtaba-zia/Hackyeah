@@ -1,201 +1,173 @@
 import * as THREE from "three";
-import type { Island } from "../../shared/types";
+import type { Health, Island } from "../../shared/types";
 import type { RenderAssets } from "./assets";
-import { seededRange, seededUnit } from "./hash";
-import type { SceneryPlacement } from "./scenery";
-import type { KitModel } from "./kit";
+import { seededRange } from "./hash";
 
 export interface IslandVisual {
   readonly group: THREE.Group;
-  update(island: Island): void;
+  update(island: Island, health: Health): void;
   dispose(): void;
 }
 
-export interface SceneryVisual {
-  readonly group: THREE.Group;
-  update(signature: string, placements: readonly SceneryPlacement[]): void;
+/** Vertices around the shore; a multiple of four puts one at each bridge port. */
+const SEGMENTS = 28;
+/** The grass surface sits a hair above y = 0. */
+const TOP = 0.04;
+const TAU = Math.PI * 2;
+
+/**
+ * How far the shore is from the island's centre at an angle, as a share of its
+ * half-size: an uneven outline between 0.925 and 1 that reaches exactly 1 at
+ * the four compass points, where bridges land.
+ */
+export function shoreShare(seed: number, angle: number): number {
+  const wobble =
+    0.5 * Math.sin(angle * 2 + seededRange(seed, 1, 0, TAU)) +
+    0.3 * Math.sin(angle * 3 + seededRange(seed, 2, 0, TAU)) +
+    0.2 * Math.sin(angle * 5 + seededRange(seed, 3, 0, TAU));
+  const share = 0.96 + 0.035 * wobble;
+  const port = Math.cos(angle * 2) ** 8;
+  return share + (1 - share) * port;
 }
 
-function perimeterPoint(island: Island, index: number, segments: number, inset: number): [number, number] {
-  const angle = (index / segments) * Math.PI * 2;
-  const variation = seededRange(island.seed, index + 11, 0.88, 1.08);
-  return [
-    Math.cos(angle) * island.size.x * 0.5 * variation * inset,
-    Math.sin(angle) * island.size.z * 0.5 * variation * inset,
-  ];
+interface Palette {
+  grass: readonly [THREE.Color, THREE.Color];
+  lip: THREE.Color;
+  turf: THREE.Color;
 }
 
-function createIslandGeometry(island: Island): { grass: THREE.BufferGeometry; rock: THREE.BufferGeometry } {
-  const segments = 12;
-  const grassPositions: number[] = [0, 0.04, 0];
-  const grassIndices: number[] = [];
-  const topStart = 1;
-  const bottomStart = topStart + segments;
+const DISTRICT_PALETTE: Palette = {
+  grass: [new THREE.Color("#5fae52"), new THREE.Color("#7cc763")],
+  lip: new THREE.Color("#9bd47a"),
+  turf: new THREE.Color("#4c9447"),
+};
+const OUTSKIRTS_PALETTE: Palette = {
+  grass: [new THREE.Color("#78a36d"), new THREE.Color("#8fb37d")],
+  lip: new THREE.Color("#a6c492"),
+  turf: new THREE.Color("#628a5c"),
+};
+const EARTH = [new THREE.Color("#a27a52"), new THREE.Color("#7a573b")] as const;
+const ROCK = [new THREE.Color("#7d778c"), new THREE.Color("#5b566e"), new THREE.Color("#423e55")] as const;
 
-  for (let index = 0; index < segments; index += 1) {
-    const point = perimeterPoint(island, index, segments, 1);
-    grassPositions.push(point[0], 0.04, point[1]);
-  }
-  for (let index = 0; index < segments; index += 1) {
-    const point = perimeterPoint(island, index, segments, 1);
-    grassPositions.push(point[0], -0.4, point[1]);
-  }
-  for (let index = 0; index < segments; index += 1) {
-    const next = (index + 1) % segments;
-    grassIndices.push(0, topStart + next, topStart + index);
-    grassIndices.push(topStart + index, topStart + next, bottomStart + next);
-    grassIndices.push(topStart + index, bottomStart + next, bottomStart + index);
-  }
+/**
+ * One mesh per island: a flat grass top with a soft lip, a slab of turf and
+ * earth under it, and jagged rock narrowing to a point far below.
+ */
+function buildTerrain(island: Island): THREE.BufferGeometry {
+  const half = island.size.x / 2;
+  const seed = island.seed;
+  const palette = island.kind === "outskirts" ? OUTSKIRTS_PALETTE : DISTRICT_PALETTE;
+  // Deep enough to read as a floating rock from the camera's angle, whatever the island's size.
+  const depth = Math.min(15, island.size.x * seededRange(seed, 63, 0.44, 0.56));
+  const shore: number[] = [];
+  for (let index = 0; index < SEGMENTS; index += 1) shore.push(half * shoreShare(seed, (index / SEGMENTS) * TAU));
 
-  const grass = new THREE.BufferGeometry();
-  grass.setAttribute("position", new THREE.Float32BufferAttribute(grassPositions, 3));
-  grass.setIndex(grassIndices);
-  grass.computeVertexNormals();
+  const positions: number[] = [];
+  const colours: number[] = [];
+  const indices: number[] = [];
+  const colour = new THREE.Color();
+  let salt = 100;
 
-  // The underside must reach deeper than `radius × tan(camera elevation)` or the
-  // grass top hides it entirely from the isometric camera, so depth scales with
-  // island size. Jittered rings narrowing downwards give the broken rock look.
-  const rockPositions: number[] = [];
-  const rockIndices: number[] = [];
-  const depth = Math.max(island.size.x, island.size.z) * seededRange(island.seed, 63, 0.45, 0.6);
-  const rings: readonly (readonly [inset: number, drop: number])[] = [
-    [0.96, 0],
-    [0.84, 0.22],
-    [0.6, 0.5],
-    [0.32, 0.78],
-  ];
-  rings.forEach(([inset, drop], ring) => {
-    for (let index = 0; index < segments; index += 1) {
-      const jitter = ring === 0 ? 1 : seededRange(island.seed, 100 + ring * segments + index, 0.78, 1.14);
-      const point = perimeterPoint(island, index, segments, inset * jitter);
-      const y = ring === 0 ? -0.37 : -depth * drop * seededRange(island.seed, 200 + ring * segments + index, 0.9, 1.1);
-      rockPositions.push(point[0], y, point[1]);
+  /** Adds a ring of vertices at a share of the shore distance and returns its first index. */
+  function ring(share: number, y: number, tint: (index: number) => THREE.Color, jitter = 0, sag = 0): number {
+    const first = positions.length / 3;
+    for (let index = 0; index < SEGMENTS; index += 1) {
+      const angle = (index / SEGMENTS) * TAU;
+      const reach = (shore[index] ?? half) * share * (jitter === 0 ? 1 : seededRange(seed, salt + index, 1 - jitter, 1 + jitter * 0.6));
+      positions.push(Math.cos(angle) * reach, y - (sag === 0 ? 0 : seededRange(seed, salt + 50 + index, 0, sag)), Math.sin(angle) * reach);
+      colour.copy(tint(index));
+      colours.push(colour.r, colour.g, colour.b);
     }
-  });
-  for (let ring = 0; ring < rings.length - 1; ring += 1) {
-    const upper = ring * segments;
-    const lower = upper + segments;
-    for (let index = 0; index < segments; index += 1) {
-      const next = (index + 1) % segments;
-      rockIndices.push(upper + index, upper + next, lower + next);
-      rockIndices.push(upper + index, lower + next, lower + index);
+    salt += 100;
+    return first;
+  }
+
+  function join(upper: number, lower: number): void {
+    for (let index = 0; index < SEGMENTS; index += 1) {
+      const next = (index + 1) % SEGMENTS;
+      indices.push(upper + index, upper + next, lower + next, upper + index, lower + next, lower + index);
     }
   }
-  const lastRing = (rings.length - 1) * segments;
-  const tipIndex = rings.length * segments;
-  rockPositions.push(
-    seededRange(island.seed, 70, -0.6, 0.6),
-    -depth,
-    seededRange(island.seed, 71, -0.6, 0.6),
-  );
-  for (let index = 0; index < segments; index += 1) {
-    rockIndices.push(lastRing + index, lastRing + ((index + 1) % segments), tipIndex);
+
+  const mixed = new THREE.Color();
+  const grass = (index: number): THREE.Color =>
+    mixed.copy(palette.grass[0]).lerp(palette.grass[1], seededRange(seed, salt + 7 * index, 0, 1));
+
+  // Top: a fan from the centre, then flat rings out to a slightly lower, lighter lip.
+  positions.push(0, TOP, 0);
+  colour.copy(palette.grass[1]);
+  colours.push(colour.r, colour.g, colour.b);
+  let previous = ring(0.3, TOP, grass);
+  for (let index = 0; index < SEGMENTS; index += 1) indices.push(0, previous + ((index + 1) % SEGMENTS), previous + index);
+  for (const share of [0.58, 0.8, 0.93]) {
+    const next = ring(share, TOP, grass);
+    join(previous, next);
+    previous = next;
   }
-  const rock = new THREE.BufferGeometry();
-  rock.setAttribute("position", new THREE.Float32BufferAttribute(rockPositions, 3));
-  rock.setIndex(rockIndices);
-  rock.computeVertexNormals();
-  return { grass, rock };
+  const lip = ring(1, TOP - 0.07, () => palette.lip);
+  join(previous, lip);
+
+  // Sides: turf, earth, then three bands of rock. Each band starts on its own
+  // vertices so colours meet in a hard line instead of blending.
+  const turfTop = ring(1, TOP - 0.07, () => palette.turf);
+  const turfBottom = ring(1.005, -0.55, () => palette.turf, 0, 0.12);
+  join(turfTop, turfBottom);
+  const earthTop = ring(0.985, -0.5, () => EARTH[0], 0, 0.12);
+  const earthBottom = ring(0.9, -1.9, () => EARTH[1], 0.03, 0.5);
+  join(earthTop, earthBottom);
+  const rockTop = ring(0.93, -1.7, () => ROCK[0], 0.03, 0.4);
+  const rockUpper = ring(0.8, -depth * 0.3, () => ROCK[0], 0.12, depth * 0.06);
+  const rockMiddle = ring(0.56, -depth * 0.58, () => ROCK[1], 0.2, depth * 0.08);
+  const rockLower = ring(0.3, -depth * 0.82, () => ROCK[2], 0.24, depth * 0.08);
+  join(rockTop, rockUpper);
+  join(rockUpper, rockMiddle);
+  join(rockMiddle, rockLower);
+  const tip = positions.length / 3;
+  positions.push(seededRange(seed, 70, -0.6, 0.6), -depth, seededRange(seed, 71, -0.6, 0.6));
+  colours.push(ROCK[2].r, ROCK[2].g, ROCK[2].b);
+  for (let index = 0; index < SEGMENTS; index += 1) indices.push(rockLower + index, rockLower + ((index + 1) % SEGMENTS), tip);
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute("color", new THREE.Float32BufferAttribute(colours, 3));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  return geometry;
 }
 
-function islandSignature(island: Island): string {
-  return `${island.kind}:${island.origin.x}:${island.origin.z}:${island.size.x}:${island.size.z}:${island.seed}`;
-}
-
-export function createIslandVisual(initial: Island, assets: RenderAssets): IslandVisual {
+export function createIslandVisual(initial: Island, initialHealth: Health, assets: RenderAssets): IslandVisual {
   const group = new THREE.Group();
   group.name = `island:${initial.id}`;
+  const terrain = new THREE.Mesh(buildTerrain(initial), assets.terrainMaterial);
+  terrain.receiveShadow = true;
+  // A band of colour just under the grass: it shows all the way round the shore of an island that needs attention.
+  const halo = new THREE.Mesh(assets.discGeometry, assets.haloMaterials.bad);
+  halo.position.y = -0.3;
+  halo.renderOrder = 2;
+  group.add(terrain, halo);
   let signature = "";
-  let grassMesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial> | null = null;
-  let rockMesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial> | null = null;
 
-  function rebuild(island: Island): void {
-    if (grassMesh) {
-      grassMesh.geometry.dispose();
-      group.remove(grassMesh);
+  function apply(island: Island, health: Health): void {
+    const next = `${island.kind}:${island.size.x}:${island.seed}`;
+    if (signature !== "" && next !== signature) {
+      terrain.geometry.dispose();
+      terrain.geometry = buildTerrain(island);
     }
-    if (rockMesh) {
-      rockMesh.geometry.dispose();
-      group.remove(rockMesh);
-    }
-    const geometry = createIslandGeometry(island);
-    grassMesh = new THREE.Mesh(geometry.grass, assets.grassMaterials[island.kind]);
-    rockMesh = new THREE.Mesh(geometry.rock, assets.rockMaterial);
-    grassMesh.castShadow = true;
-    grassMesh.receiveShadow = true;
-    rockMesh.castShadow = true;
-    group.add(rockMesh, grassMesh);
+    signature = next;
     group.position.set(island.origin.x + island.size.x / 2, 0, island.origin.z + island.size.z / 2);
-    signature = islandSignature(island);
+    halo.visible = health !== "good";
+    if (health !== "good") halo.material = assets.haloMaterials[health];
+    // The band's bright edge sits at 0.735 of the disc's radius: put that on the shore.
+    halo.scale.setScalar(island.size.x / 0.735);
   }
 
-  rebuild(initial);
+  apply(initial, initialHealth);
   return {
     group,
-    update(next: Island): void {
-      if (islandSignature(next) !== signature) rebuild(next);
-    },
+    update: apply,
     dispose(): void {
-      if (grassMesh) grassMesh.geometry.dispose();
-      if (rockMesh) rockMesh.geometry.dispose();
+      terrain.geometry.dispose();
       group.removeFromParent();
-    },
-  };
-}
-
-const SCENERY_MODELS: Record<SceneryPlacement["kind"], readonly [KitModel, KitModel, KitModel]> = {
-  tree: ["tree_pine", "tree_round", "tree_birch"],
-  rock: ["rock_1", "rock_2", "rock_3"],
-};
-
-/** One instanced draw per kit part, so a forest of a hundred trees costs a handful of calls. */
-function buildSceneryContent(placements: readonly SceneryPlacement[], assets: RenderAssets): THREE.Group {
-  const group = new THREE.Group();
-  const byModel = new Map<KitModel, SceneryPlacement[]>();
-  for (const placement of placements) {
-    const model = SCENERY_MODELS[placement.kind][placement.variant];
-    const list = byModel.get(model);
-    if (list) list.push(placement);
-    else byModel.set(model, [placement]);
-  }
-
-  const position = new THREE.Vector3();
-  const scale = new THREE.Vector3();
-  const rotation = new THREE.Quaternion();
-  const matrix = new THREE.Matrix4();
-  for (const [model, list] of byModel) {
-    for (const part of assets.kit.parts(model)) {
-      const mesh = new THREE.InstancedMesh(part.geometry, part.material, list.length);
-      list.forEach((placement, index) => {
-        rotation.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, placement.rotation);
-        scale.setScalar(placement.scale);
-        position.set(placement.position.x, 0.04, placement.position.z);
-        matrix.compose(position, rotation, scale);
-        mesh.setMatrixAt(index, matrix);
-      });
-      mesh.instanceMatrix.needsUpdate = true;
-      mesh.computeBoundingSphere();
-      group.add(mesh);
-    }
-  }
-  return group;
-}
-
-export function createSceneryVisual(initialSignature: string, placements: readonly SceneryPlacement[], assets: RenderAssets): SceneryVisual {
-  const group = new THREE.Group();
-  group.name = "instanced-scenery";
-  let signature = initialSignature;
-  let content = buildSceneryContent(placements, assets);
-  group.add(content);
-
-  return {
-    group,
-    update(nextSignature: string, nextPlacements: readonly SceneryPlacement[]): void {
-      if (nextSignature === signature) return;
-      group.remove(content);
-      content = buildSceneryContent(nextPlacements, assets);
-      group.add(content);
-      signature = nextSignature;
     },
   };
 }

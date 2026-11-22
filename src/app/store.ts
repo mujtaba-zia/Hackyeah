@@ -1,8 +1,10 @@
-import type { ClientState, Severity } from "../../shared/types";
+import type { ClientState, RunResult, Severity } from "../../shared/types";
 import type { PickTarget } from "../render/index";
 
 export type Connection = "connecting" | "open" | "reconnecting";
-export type PanelId = "problems" | "legend" | "settings" | "mockLab";
+export type PanelId = "nav" | "legend" | "settings" | "mockLab";
+/** The lists the navigation panel can show. */
+export type NavTab = "problems" | "repos" | "pipelines";
 
 export interface UiState {
   /** Last state pushed by the server; null until the first message. */
@@ -10,7 +12,15 @@ export interface UiState {
   connection: Connection;
   selection: PickTarget | null;
   panels: Record<PanelId, boolean>;
+  tab: NavTab;
+  /** Text typed into the navigation panel's search box; filters the list on show. */
+  query: string;
+  /** Problems list: only this severity, or every severity. */
   severity: Severity | "all";
+  /** Pipelines list: only this status, or every status. */
+  status: RunResult | "all";
+  /** What the pointer is over in the world. */
+  hover: PickTarget | null;
   /** Transient message from the server about the last request. */
   notice: string | null;
   webgl: boolean;

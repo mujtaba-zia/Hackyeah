@@ -14,7 +14,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   provider: "mock",
   scenario: "demo",
   watchedRepoIds: null,
-  maxRepos: 12,
+  maxRepos: 24,
   maxPrsPerRepo: 40,
   pollSeconds: 30,
   thresholds: DEFAULT_THRESHOLDS,

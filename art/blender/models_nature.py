@@ -9,10 +9,10 @@ def plaza(seed=41, radius=3.0):
     """Cobbled town square sized to the plaza radius; the centre stays clear for creatures."""
     m = Model("plaza", seed)
     m.cylinder(radius + 0.05, radius + 0.05, 0.04, (0, 0, 0), "PavingDark", segments=40)
-    ring = 0.32
-    r = 0.22
+    ring = 0.4
+    r = 0.26
     while r < radius - 0.15:
-        count = max(5, round(math.tau * r / 0.34))
+        count = max(5, round(math.tau * r / 0.46))
         offset = m.rng.uniform(0, math.tau)
         for i in range(count):
             a = offset + i / count * math.tau
@@ -21,7 +21,7 @@ def plaza(seed=41, radius=3.0):
             h = 0.035 + m.rng.uniform(0, 0.015)
             m.box((arc * 0.86, ring * 0.82, h), (math.cos(a) * r, math.sin(a) * r, 0.04 + h / 2), mat, rot=(0, 0, a + math.pi / 2))
         r += ring
-    curb = 30
+    curb = 24
     for i in range(curb):
         a = i / curb * math.tau
         m.box((math.tau * radius / curb * 0.92, 0.2, 0.12), (math.cos(a) * radius, math.sin(a) * radius, 0.06), "StoneLight", rot=(0, 0, a + math.pi / 2), bevel=0.015)
@@ -59,11 +59,11 @@ def nursery(seed=51, radius=2.0):
     """Hay-covered paddock with a picket fence; drafts hatch in here."""
     m = Model("nursery", seed)
     m.cylinder(radius, radius + 0.05, 0.035, (0, 0, 0), "Hay", segments=28, jitter=0.02)
-    for i in range(26):
+    for i in range(14):
         a = m.rng.uniform(0, math.tau)
         d = math.sqrt(m.rng.random()) * (radius - 0.15)
         m.box((0.18, 0.02, 0.012), (math.cos(a) * d, math.sin(a) * d, 0.045), "Straw", rot=(0, 0, m.rng.uniform(0, math.pi)))
-    posts = 22
+    posts = 18
     gate = -math.pi / 2  # gap faces the camera (-Y)
     fence_r = radius + 0.18
     for i in range(posts):
@@ -94,20 +94,23 @@ def nursery(seed=51, radius=2.0):
 
 
 def creature(seed=61):
-    """A round little pull-request critter. `Body` is recoloured per mood."""
+    """A round little pull-request critter with ears and a tuft. `Body` is recoloured per mood."""
     m = Model("creature", seed)
-    m.sphere(0.27, (0, 0, 0.33), "Body", segments=18, rings=12, scale=(1, 0.92, 1.05))
-    m.sphere(0.17, (0, -0.2, 0.28), "Belly", segments=14, rings=10, scale=(1, 0.42, 1.08))
+    m.sphere(0.27, (0, 0, 0.33), "Body", segments=14, rings=9, scale=(1, 0.92, 1.05))
+    m.sphere(0.17, (0, -0.2, 0.28), "Belly", segments=10, rings=7, scale=(1, 0.42, 1.08))
     for s in (-1, 1):
-        m.sphere(0.09, (s * 0.12, -0.04, 0.05), "Body", segments=10, rings=6, scale=(1, 1.35, 0.55))
-        m.sphere(0.065, (s * 0.27, -0.03, 0.3), "Body", segments=10, rings=6, scale=(0.8, 1, 1.2), rot=(0, s * 0.5, 0))
-        m.sphere(0.078, (s * 0.098, -0.225, 0.44), "EyeWhite", segments=12, rings=8)
-        m.sphere(0.045, (s * 0.098, -0.285, 0.435), "Pupil", segments=10, rings=6)
-        m.sphere(0.016, (s * 0.085, -0.322, 0.455), "EyeWhite", segments=6, rings=4)
-        m.sphere(0.042, (s * 0.175, -0.2, 0.34), "Cheek", segments=8, rings=5, scale=(1, 0.4, 0.7))
-    m.torus(0.045, 0.012, (0, -0.272, 0.36), "Pupil", segments=8, sides=4, rot=(-math.pi / 2, 0, 0), arc=math.pi)
-    m.cylinder(0.014, 0.01, 0.16, (0, 0.02, 0.6), "Body", segments=6, rot=(0.2, 0, 0))
-    m.sphere(0.045, (0, 0.05, 0.76), "Body", segments=10, rings=6)
+        m.sphere(0.09, (s * 0.12, -0.04, 0.05), "Body", segments=8, rings=5, scale=(1, 1.35, 0.55))
+        m.sphere(0.065, (s * 0.27, -0.03, 0.3), "Body", segments=8, rings=5, scale=(0.8, 1, 1.2), rot=(0, s * 0.5, 0))
+        m.cylinder(0.075, 0.0, 0.2, (s * 0.15, 0.02, 0.55), "Body", segments=5, rot=(0, s * 0.35, 0))
+        m.cylinder(0.04, 0.0, 0.12, (s * 0.155, -0.005, 0.57), "Cheek", segments=4, rot=(0, s * 0.35, 0))
+        m.sphere(0.078, (s * 0.098, -0.225, 0.44), "EyeWhite", segments=10, rings=6)
+        m.sphere(0.045, (s * 0.098, -0.285, 0.435), "Pupil", segments=8, rings=5)
+        m.sphere(0.016, (s * 0.085, -0.322, 0.455), "EyeWhite", segments=5, rings=3)
+        m.sphere(0.042, (s * 0.175, -0.2, 0.34), "Cheek", segments=6, rings=4, scale=(1, 0.4, 0.7))
+    m.torus(0.045, 0.012, (0, -0.272, 0.36), "Pupil", segments=6, sides=4, rot=(-math.pi / 2, 0, 0), arc=math.pi)
+    m.sphere(0.07, (0, 0.27, 0.22), "Belly", segments=8, rings=5)
+    m.cylinder(0.02, 0.012, 0.14, (0, 0.0, 0.6), "Body", segments=5, rot=(0.25, 0, 0))
+    m.sphere(0.05, (0, 0.04, 0.76), "Body", segments=8, rings=5)
     return m.build()
 
 
@@ -156,13 +159,14 @@ def birch(seed=101):
     return m.build()
 
 
-def _boulder(m, radius, loc, scale, moss=True):
-    verts = m.ico(radius, loc, "Stone", subdivisions=2, scale=scale, jitter=radius * 0.16)
+def _boulder(m, radius, loc, scale, moss=True, mat="Stone", subdivisions=2, jitter=0.16, moss_above=0.86):
+    """A lump of rock; with `moss`, its faces that look up further than `moss_above` have gone green."""
+    verts = m.ico(radius, loc, mat, subdivisions=subdivisions, scale=scale, jitter=radius * jitter)
     if moss:
         moss_index = m._index("Moss")
         for face in dict.fromkeys(face for vert in verts for face in vert.link_faces):
             face.normal_update()
-            if face.normal.z > 0.86:
+            if face.normal.z > moss_above:
                 face.material_index = moss_index
 
 
@@ -181,3 +185,71 @@ def rocks(seed=111):
     _boulder(m, 0.1, (0.42, -0.15, 0.04), (1, 1, 0.8), moss=False)
     built.append(m.build())
     return built
+
+
+def bushes(seed=121):
+    """Two low shrubs: one plain, one in blossom."""
+    built = []
+    for index, (name, leaves) in enumerate((("bush_1", ("Leaf", "Pine")), ("bush_2", ("LeafLight", "Leaf")))):
+        m = Model(name, seed + index)
+        for i, (x, y, z, r) in enumerate(((0, 0, 0.3, 0.36), (0.3, 0.06, 0.22, 0.27), (-0.26, -0.1, 0.22, 0.28), (0.05, 0.26, 0.2, 0.24))):
+            m.ico(r, (x, y, z), leaves[i % 2], subdivisions=1, jitter=0.04)
+        if index == 1:
+            for (x, y, z) in ((0.12, -0.3, 0.42), (-0.26, -0.3, 0.34), (0.38, -0.12, 0.34), (-0.05, -0.05, 0.64), (0.2, 0.2, 0.46)):
+                m.ico(0.075, (x, y, z), "Flower" if m.rng.random() < 0.5 else "Cloth", subdivisions=1)
+        built.append(m.build())
+    return built
+
+
+def flowers(seed=131):
+    """Two clumps of wild flowers, each a few blooms over a tuft of leaves."""
+    built = []
+    for index, (name, petals) in enumerate((("flowers_1", ("FlowerYellow", "Cloth")), ("flowers_2", ("Flower", "FlowerYellow")))):
+        m = Model(name, seed + index)
+        for i in range(5):
+            a = i / 5 * math.tau + m.rng.uniform(-0.3, 0.3)
+            m.box((0.05, 0.2, 0.02), (math.cos(a) * 0.12, math.sin(a) * 0.12, 0.06), "LeafLight", rot=(0.5, 0, a + math.pi / 2))
+        for i in range(6):
+            a = i / 6 * math.tau + m.rng.uniform(-0.3, 0.3)
+            d = m.rng.uniform(0.06, 0.3)
+            x, y = math.cos(a) * d, math.sin(a) * d
+            h = m.rng.uniform(0.16, 0.28)
+            m.box((0.025, 0.025, h), (x, y, h / 2), "Leaf")
+            m.ico(0.07, (x, y, h + 0.03), petals[i % 2], subdivisions=1, scale=(1, 1, 0.7))
+        built.append(m.build())
+    return built
+
+
+def _golem_rock(m, radius, loc, mat, scale):
+    """A block of the giant: rough stone, mossy wherever it faces the sky."""
+    _boulder(m, radius, loc, scale, mat=mat, subdivisions=1, jitter=0.1, moss_above=0.72)
+
+
+def giant(seed=151):
+    """The meltdown colossus: a horned golem of stone and moss with glowing eyes, looming over the islands."""
+    m = Model("giant", seed)
+    for s in (-1, 1):
+        # Feet, legs.
+        m.box((1.15, 1.5, 0.55), (s * 0.95, -0.15, 0.275), "GolemDark", bevel=0.08)
+        m.cylinder(0.62, 0.5, 2.5, (s * 0.92, 0, 0.5), "Golem", segments=6, rot=(0, -s * 0.05, 0))
+        m.ico(0.5, (s * 0.92, -0.3, 1.9), "GolemDark", subdivisions=1, scale=(1, 0.8, 0.8), jitter=0.04)
+        # Shoulders, arms hanging a little forward, fists.
+        _golem_rock(m, 0.95, (s * 1.85, 0.05, 6.05), "GolemDark", (1, 1, 0.85))
+        m.cylinder(0.48, 0.42, 1.7, (s * 2.15, -0.05, 4.2), "Golem", segments=6, rot=(0, s * 0.12, 0))
+        m.cylinder(0.46, 0.6, 1.6, (s * 2.3, -0.5, 2.6), "Golem", segments=6, rot=(0.3, s * 0.05, 0))
+        m.ico(0.72, (s * 2.32, -0.72, 2.25), "GolemDark", subdivisions=1, scale=(1, 1, 0.9), jitter=0.06)
+        # Horns sweeping out and up.
+        m.cylinder(0.3, 0.0, 1.25, (s * 0.62, -0.1, 7.75), "Dark", segments=5, rot=(0.1, s * 0.5, 0))
+        # Eyes.
+        m.box((0.3, 0.12, 0.17), (s * 0.36, -1.0, 7.32), "Eye", rot=(0, s * 0.18, 0))
+    # Hips, torso with a glowing seam, head, brow and jaw.
+    m.ico(1.2, (0, 0, 3.3), "GolemDark", subdivisions=1, scale=(1.3, 0.85, 0.7), jitter=0.06)
+    _golem_rock(m, 1.55, (0, 0.05, 5.0), "Golem", (1.35, 0.9, 1.05))
+    m.box((0.22, 0.1, 1.0), (0, -1.32, 4.9), "Eye", rot=(0, 0.2, 0))
+    m.box((0.6, 0.1, 0.18), (0.1, -1.3, 4.6), "Eye", rot=(0, -0.5, 0))
+    _golem_rock(m, 0.98, (0, -0.2, 7.3), "Golem", (1, 0.95, 0.9))
+    m.box((1.3, 0.34, 0.22), (0, -0.95, 7.58), "GolemDark", bevel=0.04)
+    m.box((0.95, 0.5, 0.32), (0, -0.78, 6.72), "GolemDark", bevel=0.05)
+    for x in (-0.3, 0.0, 0.3):
+        m.box((0.16, 0.1, 0.16), (x, -1.0, 6.94), "StoneLight")
+    return m.build()

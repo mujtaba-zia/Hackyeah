@@ -1,0 +1,296 @@
+/* Nameplates and labels the world draws over its canvas (src/render/overlay.ts).
+   Colours come from the palette variables main.ts sets on :root. */
+
+.world-overlay {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  font: 600 12px/1.2 system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #eef6ff;
+  user-select: none;
+}
+
+.world-overlay > * {
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+  will-change: transform;
+}
+
+.world-overlay [hidden] {
+  display: none !important;
+}
+
+.world-overlay [data-status] {
+  background: var(--status-none);
+}
+
+.world-overlay [data-status="success"] { background: var(--status-success); }
+.world-overlay [data-status="failure"] { background: var(--status-failure); }
+.world-overlay [data-status="partial"] { background: var(--status-partial); }
+.world-overlay [data-status="running"] { background: var(--status-running); }
+.world-overlay [data-status="queued"] { background: var(--status-queued); }
+.world-overlay [data-status="cancelled"] { background: var(--status-cancelled); }
+
+/* ---- island nameplate ---- */
+
+.plate {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 9px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  background: rgba(12, 20, 35, 0.86);
+  box-shadow: 0 4px 14px rgba(4, 12, 26, 0.38);
+}
+
+/* A small pointer down to the town hall the plate belongs to. */
+.plate::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 8px;
+  height: 8px;
+  margin-left: -4px;
+  rotate: 45deg;
+  border: solid rgba(255, 255, 255, 0.16);
+  border-width: 0 1px 1px 0;
+  background: rgb(12, 20, 35);
+}
+
+.plate-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 200px;
+}
+
+.plate-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--health-good);
+}
+
+.plate-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  letter-spacing: 0.01em;
+}
+
+.plate-alert {
+  flex: none;
+  min-width: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  font: 700 10px/16px system-ui, sans-serif;
+  text-align: center;
+  color: #111a2a;
+  background: var(--severity-warning);
+}
+
+.plate-alert[data-severity="error"] { background: var(--severity-error); }
+.plate-alert[data-severity="critical"] { background: var(--severity-critical); color: #fff; }
+
+.plate-facts {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #b9c8db;
+  font-variant-numeric: tabular-nums;
+}
+
+.plate-facts:empty {
+  display: none;
+}
+
+.plate-bar {
+  display: flex;
+  gap: 2px;
+  height: 7px;
+}
+
+.plate-bar i {
+  width: 7px;
+  border-radius: 2px;
+}
+
+/* Too many pipelines for a pip each: one bar, split in proportion. */
+.plate-bar[data-merged] {
+  width: 84px;
+  gap: 0;
+  overflow: hidden;
+  border-radius: 3px;
+}
+
+.plate-bar[data-merged] i {
+  flex: 1 0 3px;
+  width: auto;
+  border-radius: 0;
+}
+
+.plate[data-health="warn"] {
+  border-color: color-mix(in srgb, var(--health-warn) 70%, transparent);
+}
+
+.plate[data-health="warn"] .plate-dot {
+  background: var(--health-warn);
+}
+
+.plate[data-health="bad"] {
+  border-color: var(--health-bad);
+  background: rgba(44, 14, 26, 0.9);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--health-bad) 45%, transparent), 0 4px 18px rgba(255, 60, 90, 0.4);
+}
+
+.plate[data-health="bad"]::after {
+  border-color: var(--health-bad);
+  background: rgb(44, 14, 26);
+}
+
+.plate[data-health="bad"] .plate-dot {
+  background: var(--health-bad);
+  animation: plate-pulse 1.4s ease-in-out infinite;
+}
+
+.plate[data-health="none"] {
+  opacity: 0.9;
+}
+
+.plate[data-hovered] {
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.plate[data-selected] {
+  outline: 2px solid #ffe786;
+  outline-offset: 1px;
+}
+
+@keyframes plate-pulse {
+  50% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--health-bad) 35%, transparent);
+  }
+}
+
+/* Zoomed far out: a name and a sliver of status. */
+[data-detail="far"] .plate {
+  gap: 3px;
+  padding: 3px 6px 4px;
+  border-radius: 7px;
+}
+
+[data-detail="far"] .plate-head {
+  gap: 4px;
+  max-width: 104px;
+}
+
+[data-detail="far"] .plate-name {
+  font-size: 11px;
+}
+
+[data-detail="far"] .plate-dot {
+  width: 6px;
+  height: 6px;
+}
+
+[data-detail="far"] .plate-prs,
+[data-detail="far"] .plate-count,
+[data-detail="far"] .plate-alert {
+  display: none;
+}
+
+[data-detail="far"] .plate-bar {
+  gap: 1px;
+  height: 4px;
+}
+
+[data-detail="far"] .plate-bar i {
+  width: 4px;
+  border-radius: 1px;
+}
+
+[data-detail="far"] .plate-bar[data-merged] {
+  width: 48px;
+}
+
+[data-detail="near"] .plate-name {
+  font-size: 14px;
+}
+
+/* ---- tower name ---- */
+
+.tower-name {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  box-sizing: border-box;
+  max-width: 168px;
+  height: 20px;
+  padding: 0 8px 0 6px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+  background: rgba(12, 20, 35, 0.82);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.tower-name i {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.tower-name span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: none;
+}
+
+.tower-name[data-status="failure"] {
+  border-color: var(--status-failure);
+}
+
+.tower-name[data-status] {
+  background: rgba(12, 20, 35, 0.82);
+}
+
+.tower-name[data-hovered],
+.tower-name[data-selected] {
+  border-color: #ffe786;
+}
+
+/* ---- project title ---- */
+
+.group-title {
+  padding: 0 0 3px;
+  border-bottom: 2px solid color-mix(in srgb, var(--health-good) 80%, transparent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(6, 18, 38, 0.9), 0 0 10px rgba(6, 18, 38, 0.7);
+}
+
+.group-title[data-health="warn"] { border-bottom-color: var(--health-warn); }
+.group-title[data-health="bad"] { border-bottom-color: var(--health-bad); }
+
+[data-detail="far"] .group-title {
+  font-size: 11px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plate[data-health="bad"] .plate-dot {
+    animation: none;
+  }
+}
