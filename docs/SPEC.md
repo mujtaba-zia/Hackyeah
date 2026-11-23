@@ -232,7 +232,9 @@ Incidents are sorted critical → error → warning, then by title. Incident ids
   or a release to a repo, age every PR by N days, reset scenario.
 - **View controls** (bottom right): zoom in, zoom out, show everything, and a card listing the
   mouse and keyboard controls.
-- On a narrow screen the lists become a sheet at the bottom and the other panels sit above it.
+- The top bar wraps onto more rows in a narrow window, and the panels start below wherever it ends.
+  On a narrow screen the lists become a sheet at the bottom and the other panels sit above it; the
+  world is then framed in the band between the top bar and the sheet.
 - Copy is short and plain. No tutorials, no "click here", no talk about how it was built.
 - Every string from a provider is rendered with `textContent`, never `innerHTML`.
 

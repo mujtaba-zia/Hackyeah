@@ -148,6 +148,12 @@ describe("camera", () => {
     expect(after.x).toBeCloseTo(before.x, 6);
     expect(after.z).toBeCloseTo(before.z, 6);
   });
+
+  it("stays where it is when there is nothing in the world to frame", () => {
+    const camera = rig();
+    camera.jumpTo({ x: 30, z: 40, zoom: 0.8 });
+    expect(camera.poseFor([], 3, { top: 0, right: 0, bottom: 0, left: 0 })).toEqual({ x: 30, z: 40, zoom: 0.8 });
+  });
 });
 
 describe("id reconciliation", () => {

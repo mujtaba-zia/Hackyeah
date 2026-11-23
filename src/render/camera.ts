@@ -162,9 +162,10 @@ export class CameraRig {
    * The pose that shows some discs of the world in the free part of the view,
    * never closer than `maxZoom`. `padding` is how many pixels to keep clear
    * inside the free area: labels above the discs need room that does not shrink
-   * with the zoom.
+   * with the zoom. With nothing to show, the view stays where it is.
    */
   poseFor(discs: readonly WorldDisc[], maxZoom: number, padding: ViewInsets): CameraPose {
+    if (discs.length === 0) return { x: this.x, z: this.z, zoom: this.zoom };
     // A disc is as wide on screen as it is on the ground, and foreshortened in depth.
     let left = Number.POSITIVE_INFINITY;
     let right = Number.NEGATIVE_INFINITY;

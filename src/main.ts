@@ -17,8 +17,10 @@ import { mountTopBar } from "./ui/topBar";
 import { mountViewControls } from "./ui/viewControls";
 
 const NOTICE_MS = 4000;
-/** Panels may cover the view, but `fit` and `goTo` never aim at less than this share of it. */
-const MIN_FREE_SHARE = 0.45;
+/** A panel at least this share of the window wide lies across the view as a sheet; a narrower one stands beside it as a column. */
+const SHEET_SHARE = 0.7;
+/** Panels may cover the view, but `fit` and `goTo` never aim at less than this share of its width or of its height. */
+const MIN_FREE_SHARE = 0.3;
 
 function requireElement<T extends HTMLElement>(id: string, type: new () => T): T {
   const node = document.getElementById(id);
@@ -51,13 +53,28 @@ let view: WorldView | null = null;
 /** The canvas area panels leave free, so the camera centres on what is actually visible. */
 function measureInsets(): ViewInsets {
   const width = window.innerWidth;
-  const insets: ViewInsets = { top: topBar.getBoundingClientRect().bottom, right: 0, bottom: 0, left: 0 };
-  if (!nav.hidden) insets.left = nav.getBoundingClientRect().right;
-  for (const panel of rightColumn?.children ?? []) {
-    if (panel instanceof HTMLElement && !panel.hidden) insets.right = Math.max(insets.right, width - panel.getBoundingClientRect().left);
+  const height = window.innerHeight;
+  const bar = topBar.getBoundingClientRect().bottom;
+  const insets: ViewInsets = { top: bar, right: 0, bottom: 0, left: 0 };
+  const covering: DOMRect[] = [];
+  if (!nav.hidden) covering.push(nav.getBoundingClientRect());
+  if (rightColumn && [...rightColumn.children].some((panel) => panel instanceof HTMLElement && !panel.hidden)) {
+    covering.push(rightColumn.getBoundingClientRect());
   }
-  // On a narrow screen panels overlap the world; aiming at the sliver beside them would be worse than ignoring them.
+  for (const rect of covering) {
+    if (rect.width >= width * SHEET_SHARE) {
+      // A sheet takes the half of the view its middle is in.
+      if (rect.top + rect.bottom > height) insets.bottom = Math.max(insets.bottom, height - rect.top);
+      else insets.top = Math.max(insets.top, rect.bottom);
+    } else if (rect.left + rect.right < width) insets.left = Math.max(insets.left, rect.right);
+    else insets.right = Math.max(insets.right, width - rect.left);
+  }
+  // Aiming at a sliver between panels would be worse than ignoring them.
   if (width - insets.left - insets.right < width * MIN_FREE_SHARE) insets.left = insets.right = 0;
+  if (height - insets.top - insets.bottom < height * MIN_FREE_SHARE) {
+    insets.top = bar;
+    insets.bottom = 0;
+  }
   return insets;
 }
 
@@ -141,6 +158,12 @@ mountTooltip(requireElement("tooltip", HTMLElement), store);
 store.subscribe((state, previous) => {
   if (state.panels !== previous.panels || state.selection !== previous.selection) view?.setInsets(measureInsets());
 });
+
+// The bar wraps onto more rows in a narrow window; panels and view controls start where it ends.
+new ResizeObserver(() => {
+  document.documentElement.style.setProperty("--bar-bottom", `${Math.ceil(topBar.getBoundingClientRect().bottom)}px`);
+  view?.setInsets(measureInsets());
+}).observe(topBar);
 
 let noticeTimer = 0;
 const socket = connectServer(socketUrl(window.location, SOCKET_PATH), {

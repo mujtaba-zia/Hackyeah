@@ -56,7 +56,9 @@ export class ModelBatch {
     if (this.options.coloured) this.colours.needsUpdate = true;
     for (const mesh of this.meshes) {
       mesh.count = this.count;
-      if (!this.options.animated) mesh.computeBoundingSphere();
+      // A still batch is culled and picked by its sphere. A moving one is never culled, and drops its sphere so the next ray measures where its instances are now.
+      if (this.options.animated) mesh.boundingSphere = null;
+      else mesh.computeBoundingSphere();
     }
     this.group.visible = this.count > 0;
   }

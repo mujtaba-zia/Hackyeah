@@ -83,6 +83,24 @@ describe("instanced batches", () => {
     expect((batch.group.children[0] as THREE.InstancedMesh).count).toBe(1);
     expect(batch.pick(raycaster, [])).toBeNull();
   });
+
+  it("still finds an instance that moves after it has left the place it was first picked", () => {
+    const batch = new ModelBatch([{ geometry: new THREE.BoxGeometry(1, 1, 1), material: namedMaterial("Body") }], { animated: true });
+    const matrix = new THREE.Matrix4();
+    const standAt = (x: number): void => {
+      batch.begin();
+      batch.add("pr", matrix.makeTranslation(x, 0, 0));
+      batch.end();
+    };
+    const pickAbove = (x: number) => batch.pick(new THREE.Raycaster(new THREE.Vector3(x, 10, 0), new THREE.Vector3(0, -1, 0)), []);
+
+    standAt(0);
+    batch.group.updateMatrixWorld(true);
+    expect(pickAbove(0)?.id).toBe("pr");
+    standAt(40);
+    expect(pickAbove(40)?.id).toBe("pr");
+    expect(pickAbove(0)).toBeNull();
+  });
 });
 
 describe("shipped kit", () => {

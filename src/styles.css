@@ -341,7 +341,8 @@ option:disabled {
 
 .hud {
   position: fixed;
-  inset: 58px 12px 12px;
+  /* `--bar-bottom` is where the top bar ends, kept up to date as the bar wraps. */
+  inset: calc(var(--bar-bottom, 50px) + 8px) 12px 12px;
   z-index: 1;
   display: flex;
   justify-content: space-between;
@@ -913,7 +914,7 @@ a.run:hover {
   }
 
   .hud {
-    inset: 92px 8px 8px;
+    inset: calc(var(--bar-bottom, 84px) + 8px) 8px 8px;
     flex-direction: column-reverse;
     justify-content: flex-start;
   }
@@ -934,7 +935,7 @@ a.run:hover {
   }
 
   .view-controls {
-    top: 96px;
+    top: calc(var(--bar-bottom, 84px) + 12px);
     bottom: auto;
     right: 8px;
   }
