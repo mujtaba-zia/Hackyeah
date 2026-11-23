@@ -1,13 +1,11 @@
 import * as THREE from "three";
+import { fromScreenAxes } from "../../shared/geometry";
 import type { EffectKind, Incident, Vec2 } from "../../shared/types";
 import type { RenderAssets } from "./assets";
 import { hashString, seededRange } from "./hash";
 
-export interface EffectLocator {
-  district(id: string): Vec2 | null;
-  tower(id: string): Vec2 | null;
-  creature(id: string): Vec2 | null;
-}
+/** Where a district's plaza is, or null when the district is not in the world. */
+export type EffectLocator = (districtId: string) => Vec2 | null;
 
 export interface EffectSlot {
   readonly group: THREE.Group;
@@ -16,47 +14,11 @@ export interface EffectSlot {
   dispose(): void;
 }
 
-interface EffectBase {
-  kind: EffectKind;
+/** One drawn effect: its objects and how they move. Everything it creates is its own to dispose. */
+interface EffectVisual {
   group: THREE.Group;
+  animate(time: number): void;
 }
-
-interface FireEffect extends EffectBase {
-  kind: "fire";
-  flames: THREE.Mesh[];
-  smoke: THREE.Sprite[];
-  phase: number;
-}
-
-interface SmokeEffect extends EffectBase {
-  kind: "smoke";
-  puffs: THREE.Sprite[];
-  phase: number;
-}
-
-interface CrowdEffect extends EffectBase {
-  kind: "crowd";
-  ring: THREE.Mesh;
-  cluster: THREE.Mesh[];
-  phase: number;
-}
-
-interface StormEffect extends EffectBase {
-  kind: "storm";
-  clouds: THREE.Mesh[];
-  cloudHeights: Float32Array;
-  rain: THREE.LineSegments[];
-  phase: number;
-}
-
-interface GiantEffect extends EffectBase {
-  kind: "giant";
-  body: THREE.Mesh;
-  head: THREE.Mesh;
-  phase: number;
-}
-
-type EffectVisual = FireEffect | SmokeEffect | CrowdEffect | StormEffect | GiantEffect;
 
 /** An incident the world draws; incidents without an effect only appear in Problems. */
 export type VisibleIncident = Incident & { effect: EffectKind };
@@ -76,331 +38,218 @@ function incidentSignature(incident: Incident): string {
   ].join("|");
 }
 
-function collectIncidentPositions(incident: Incident, locator: EffectLocator): Vec2[] {
-  const positions: Vec2[] = [];
-  for (let index = 0; index < incident.targets.districts.length; index += 1) {
-    const position = locator.district(incident.targets.districts[index] ?? "");
-    if (position) positions.push(position);
-  }
-  for (let index = 0; index < incident.targets.towers.length; index += 1) {
-    const position = locator.tower(incident.targets.towers[index] ?? "");
-    if (position) positions.push(position);
-  }
-  for (let index = 0; index < incident.targets.creatures.length; index += 1) {
-    const position = locator.creature(incident.targets.creatures[index] ?? "");
-    if (position) positions.push(position);
-  }
-  if (positions.length === 0) positions.push(incident.focus);
-  return positions;
+function puffMaterial(assets: RenderAssets, colour: number, opacity: number): THREE.SpriteMaterial {
+  return new THREE.SpriteMaterial({ map: assets.softTexture, color: colour, transparent: true, opacity, depthWrite: false });
 }
 
-function createFireEffect(incident: Incident, locator: EffectLocator, assets: RenderAssets): FireEffect {
+// Fire, smoke and the crowd ring stand where the incident says to look: the
+// failing tower, the full nursery, the crowded plaza.
+
+function createFire(incident: Incident, assets: RenderAssets): EffectVisual {
   const group = new THREE.Group();
-  group.name = `effect:fire:${incident.id}`;
-  const position = collectIncidentPositions(incident, locator)[0] ?? incident.focus;
-  group.position.set(position.x, 0, position.z);
+  group.position.set(incident.focus.x, 0, incident.focus.z);
+  const seed = hashString(incident.id);
+  const phase = seededRange(seed, 80, 0, Math.PI * 2);
+  const flameGeometry = new THREE.ConeGeometry(0.3, 1.1, 5);
+  const flameMaterials = [0xff6d2f, 0xffc454].map(
+    (color) => new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.92, toneMapped: false }),
+  );
   const flames: THREE.Mesh[] = [];
-  const smoke: THREE.Sprite[] = [];
-  const seed = hashString(incident.id);
   for (let index = 0; index < 7; index += 1) {
-    const flameMaterial = new THREE.MeshBasicMaterial({
-      color: index % 2 === 0 ? 0xff6d2f : 0xffc454,
-      transparent: true,
-      opacity: 0.92,
-    });
-    const flame = new THREE.Mesh(new THREE.ConeGeometry(0.27, 0.95, 5), flameMaterial);
+    const flame = new THREE.Mesh(flameGeometry, flameMaterials[index % 2]);
     const angle = seededRange(seed, index * 2, 0, Math.PI * 2);
-    const radius = seededRange(seed, index * 2 + 1, 0.05, 0.7);
-    flame.position.set(Math.cos(angle) * radius, 0.48, Math.sin(angle) * radius);
+    const radius = seededRange(seed, index * 2 + 1, 0.05, 0.75);
+    flame.position.set(Math.cos(angle) * radius, 0.5, Math.sin(angle) * radius);
     flames.push(flame);
-    group.add(flame);
   }
-  for (let index = 0; index < 5; index += 1) {
-    const material = new THREE.SpriteMaterial({
-      map: assets.particleTexture,
-      color: 0x485062,
-      transparent: true,
-      opacity: 0.56,
-      depthWrite: false,
-    });
-    const puff = new THREE.Sprite(material);
-    puff.position.set(seededRange(seed, 40 + index, -0.55, 0.55), 1.25 + index * 0.3, 0);
-    puff.scale.set(0.75 + index * 0.1, 0.75 + index * 0.1, 1);
+  const smokeMaterial = puffMaterial(assets, 0x3c4252, 0.5);
+  const smoke: THREE.Sprite[] = [];
+  for (let index = 0; index < 6; index += 1) {
+    const puff = new THREE.Sprite(smokeMaterial);
+    puff.position.x = seededRange(seed, 40 + index, -0.55, 0.55);
     smoke.push(puff);
-    group.add(puff);
   }
-  return { kind: "fire", group, flames, smoke, phase: seededRange(seed, 80, 0, Math.PI * 2) };
+  group.add(...flames, ...smoke);
+  return {
+    group,
+    animate(time: number): void {
+      flames.forEach((flame, index) => {
+        const pulse = 0.78 + Math.sin(time * 8 + phase + index) * 0.2;
+        flame.scale.set(pulse, 0.75 + pulse * 0.42, pulse);
+        flame.position.y = 0.48 + Math.sin(time * 6 + index) * 0.13;
+      });
+      smoke.forEach((puff, index) => {
+        // Each puff rises through its own stretch of the column, growing as it goes.
+        const rise = (time * 0.38 + index / smoke.length) % 1;
+        puff.position.y = 1.3 + rise * 3.4;
+        const size = 0.8 + rise * 1.5;
+        puff.scale.set(size, size, 1);
+      });
+    },
+  };
 }
 
-function createSmokeEffect(incident: Incident, locator: EffectLocator, assets: RenderAssets): SmokeEffect {
+function createSmoke(incident: Incident, assets: RenderAssets): EffectVisual {
   const group = new THREE.Group();
-  group.name = `effect:smoke:${incident.id}`;
-  const position = collectIncidentPositions(incident, locator)[0] ?? incident.focus;
-  group.position.set(position.x, 0, position.z);
-  const puffs: THREE.Sprite[] = [];
+  group.position.set(incident.focus.x, 0, incident.focus.z);
   const seed = hashString(incident.id);
+  const materials = [0x697284, 0x87909e].map((colour) => puffMaterial(assets, colour, 0.55));
+  const puffs: THREE.Sprite[] = [];
   for (let index = 0; index < 9; index += 1) {
-    const material = new THREE.SpriteMaterial({
-      map: assets.particleTexture,
-      color: index % 2 === 0 ? 0x697284 : 0x87909e,
-      transparent: true,
-      opacity: 0.58,
-      depthWrite: false,
-    });
-    const puff = new THREE.Sprite(material);
-    const size = seededRange(seed, index * 3, 0.64, 1.15);
-    puff.position.set(
-      seededRange(seed, index * 3 + 1, -0.45, 0.45),
-      0.75 + index * 0.32,
-      seededRange(seed, index * 3 + 2, -0.45, 0.45),
-    );
-    puff.scale.set(size, size, 1);
+    const puff = new THREE.Sprite(materials[index % 2]);
+    puff.position.set(seededRange(seed, index * 3 + 1, -0.45, 0.45), 0, seededRange(seed, index * 3 + 2, -0.45, 0.45));
     puffs.push(puff);
-    group.add(puff);
   }
-  return { kind: "smoke", group, puffs, phase: seededRange(seed, 88, 0, Math.PI * 2) };
+  group.add(...puffs);
+  return {
+    group,
+    animate(time: number): void {
+      puffs.forEach((puff, index) => {
+        const rise = (time * 0.3 + index / puffs.length) % 1;
+        puff.position.y = 0.8 + rise * 3;
+        const size = 0.7 + rise * 1.1 + Math.sin(time + index) * 0.06;
+        puff.scale.set(size, size, 1);
+      });
+    },
+  };
 }
 
-function createCrowdEffect(incident: Incident, locator: EffectLocator): CrowdEffect {
+function createCrowd(incident: Incident): EffectVisual {
   const group = new THREE.Group();
-  group.name = `effect:crowd:${incident.id}`;
-  const position = collectIncidentPositions(incident, locator)[0] ?? incident.focus;
-  group.position.set(position.x, 0.1, position.z);
+  group.position.set(incident.focus.x, 0.2, incident.focus.z);
+  const phase = seededRange(hashString(incident.id), 99, 0, Math.PI * 2);
+  // A ring round the plaza: the review queue is the crowd of creatures inside it.
   const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(2.3, 0.08, 6, 28),
-    new THREE.MeshBasicMaterial({ color: 0xffcf68, transparent: true, opacity: 0.88 }),
+    new THREE.TorusGeometry(3.1, 0.09, 6, 40),
+    new THREE.MeshBasicMaterial({ color: 0xffcf68, transparent: true, opacity: 0.9, toneMapped: false }),
   );
   ring.rotation.x = Math.PI * 0.5;
-  const cluster: THREE.Mesh[] = [];
-  const seed = hashString(incident.id);
-  for (let index = 0; index < 15; index += 1) {
-    const person = new THREE.Mesh(
-      new THREE.DodecahedronGeometry(0.18, 0),
-      new THREE.MeshStandardMaterial({ color: index % 2 === 0 ? 0xf2bf6a : 0x91c7d4, flatShading: true }),
-    );
-    const angle = seededRange(seed, index * 2, 0, Math.PI * 2);
-    const radius = seededRange(seed, index * 2 + 1, 0.25, 1.4);
-    person.position.set(Math.cos(angle) * radius, 0.24, Math.sin(angle) * radius);
-    cluster.push(person);
-    group.add(person);
-  }
   group.add(ring);
-  return { kind: "crowd", group, ring, cluster, phase: seededRange(seed, 99, 0, Math.PI * 2) };
-}
-
-function createRainGeometry(seed: number, offset: number): THREE.BufferGeometry {
-  const drops = 18;
-  const positions = new Float32Array(drops * 6);
-  for (let index = 0; index < drops; index += 1) {
-    const x = seededRange(seed, offset + index * 3, -2, 2);
-    const z = seededRange(seed, offset + index * 3 + 1, -2, 2);
-    const y = seededRange(seed, offset + index * 3 + 2, 0.9, 3.4);
-    const position = index * 6;
-    positions[position] = x;
-    positions[position + 1] = y;
-    positions[position + 2] = z;
-    positions[position + 3] = x - 0.08;
-    positions[position + 4] = y - 0.72;
-    positions[position + 5] = z - 0.08;
-  }
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  return geometry;
+  return {
+    group,
+    animate(time: number): void {
+      const pulse = 0.96 + Math.sin(time * 2.6 + phase) * 0.05;
+      ring.scale.set(pulse, pulse, pulse);
+      ring.rotation.z = time * 0.18;
+    },
+  };
 }
 
 /**
  * The camera looks down from +x/+z, so anything above the plaza is drawn over
- * whatever stands behind it, and the HQ always stands behind the plaza. The
- * storm therefore hangs low over the plaza's front edge (towards the viewer):
- * on screen it lands in front of the HQ's doorstep instead of across its walls.
- * Clouds spread sideways (across the view) rather than in depth.
+ * whatever stands behind it, and the town hall always stands behind the plaza.
+ * The storm therefore hangs low over the plaza's front edge (towards the
+ * viewer) and spreads sideways across the view rather than in depth.
  */
 const STORM_FORWARD = 5.2;
 const STORM_HEIGHT = 3.3;
+const STORM_CLOUDS = 5;
+const RAIN_DROPS = 18;
 
-function createStormEffect(incident: Incident, locator: EffectLocator): StormEffect {
+function createStorm(incident: Incident, locator: EffectLocator): EffectVisual {
   const group = new THREE.Group();
-  group.name = `effect:storm:${incident.id}`;
-  const positions: Vec2[] = [];
-  for (let index = 0; index < incident.targets.districts.length; index += 1) {
-    const position = locator.district(incident.targets.districts[index] ?? "");
-    if (position) positions.push(position);
-  }
+  const positions = incident.targets.districts.flatMap((id) => locator(id) ?? []);
   if (positions.length === 0) positions.push(incident.focus);
   const seed = hashString(incident.id);
-  const clouds: THREE.Mesh[] = [];
-  const CLOUDS = 5;
-  const cloudHeights = new Float32Array(positions.length * CLOUDS);
+  const tintGeometry = new THREE.CircleGeometry(4.8, 28).rotateX(-Math.PI / 2);
+  const tintMaterial = new THREE.MeshBasicMaterial({ color: 0xcc3646, transparent: true, opacity: 0.2, depthWrite: false });
+  const cloudGeometry = new THREE.DodecahedronGeometry(0.9, 0);
+  const cloudMaterial = new THREE.MeshStandardMaterial({ color: 0x3a4256, flatShading: true, roughness: 1, transparent: true, opacity: 0.88 });
+  const rainMaterial = new THREE.LineBasicMaterial({ color: 0x8fd4ff, transparent: true, opacity: 0.78 });
+  const clouds: { mesh: THREE.Mesh; height: number }[] = [];
   const rain: THREE.LineSegments[] = [];
 
-  for (let targetIndex = 0; targetIndex < positions.length; targetIndex += 1) {
-    const position = positions[targetIndex];
-    if (!position) continue;
-    const tint = new THREE.Mesh(
-      new THREE.CircleGeometry(4.6, 28),
-      new THREE.MeshBasicMaterial({ color: 0xcc3646, transparent: true, opacity: 0.2, depthWrite: false }),
-    );
-    tint.rotation.x = -Math.PI * 0.5;
-    tint.position.set(position.x, 0.06, position.z);
+  positions.forEach((position, target) => {
+    const tint = new THREE.Mesh(tintGeometry, tintMaterial);
+    tint.position.set(position.x, 0.16, position.z);
     group.add(tint);
-    for (let cloudIndex = 0; cloudIndex < CLOUDS; cloudIndex += 1) {
-      const cloud = new THREE.Mesh(
-        new THREE.DodecahedronGeometry(0.9, 0),
-        new THREE.MeshStandardMaterial({ color: 0x3a4256, flatShading: true, roughness: 1, transparent: true, opacity: 0.86 }),
-      );
-      const combinedIndex = targetIndex * CLOUDS + cloudIndex;
+    for (let index = 0; index < STORM_CLOUDS; index += 1) {
+      const salt = (target * STORM_CLOUDS + index) * 3;
       // `across` runs left-right on screen, `depth` towards/away from the camera.
-      const across = (cloudIndex - (CLOUDS - 1) / 2) * 0.95 + seededRange(seed, combinedIndex * 3, -0.2, 0.2);
-      const depth = seededRange(seed, combinedIndex * 3 + 1, -0.35, 0.35);
-      const y = STORM_HEIGHT + seededRange(seed, combinedIndex * 3 + 2, 0, 0.45);
-      cloud.position.set(
-        position.x + STORM_FORWARD + depth + across,
-        y,
-        position.z + STORM_FORWARD + depth - across,
-      );
-      cloud.scale.set(1.3, 0.7, 1.0);
-      clouds.push(cloud);
-      cloudHeights[combinedIndex] = y;
-      group.add(cloud);
+      const across = (index - (STORM_CLOUDS - 1) / 2) * 0.95 + seededRange(seed, salt, -0.2, 0.2);
+      const depth = seededRange(seed, salt + 1, -0.35, 0.35);
+      const height = STORM_HEIGHT + seededRange(seed, salt + 2, 0, 0.45);
+      const mesh = new THREE.Mesh(cloudGeometry, cloudMaterial);
+      mesh.position.set(position.x + STORM_FORWARD + depth + across, height, position.z + STORM_FORWARD + depth - across);
+      mesh.scale.set(1.3, 0.7, 1.0);
+      clouds.push({ mesh, height });
+      group.add(mesh);
     }
-    const rainMaterial = new THREE.LineBasicMaterial({ color: 0x7bcaff, transparent: true, opacity: 0.74 });
-    const rainLines = new THREE.LineSegments(createRainGeometry(seed, 200 + targetIndex * 60), rainMaterial);
-    rainLines.position.set(position.x + STORM_FORWARD, 0, position.z + STORM_FORWARD);
-    rain.push(rainLines);
-    group.add(rainLines);
-  }
-  return { kind: "storm", group, clouds, cloudHeights, rain, phase: seededRange(seed, 300, 0, Math.PI * 2) };
+    const drops = new Float32Array(RAIN_DROPS * 6);
+    for (let index = 0; index < RAIN_DROPS; index += 1) {
+      const salt = 200 + target * 60 + index * 3;
+      const x = seededRange(seed, salt, -2, 2);
+      const z = seededRange(seed, salt + 1, -2, 2);
+      const y = seededRange(seed, salt + 2, 0.9, 3.4);
+      drops.set([x, y, z, x - 0.08, y - 0.72, z - 0.08], index * 6);
+    }
+    const lines = new THREE.LineSegments(new THREE.BufferGeometry().setAttribute("position", new THREE.BufferAttribute(drops, 3)), rainMaterial);
+    lines.position.set(position.x + STORM_FORWARD, 0, position.z + STORM_FORWARD);
+    rain.push(lines);
+    group.add(lines);
+  });
+  return {
+    group,
+    animate(time: number): void {
+      clouds.forEach(({ mesh, height }, index) => {
+        mesh.position.y = height + Math.sin(time + index) * 0.13;
+      });
+      rain.forEach((lines, index) => {
+        lines.position.y = -((time * 3.2 + index * 0.2) % 0.82);
+      });
+    },
+  };
 }
 
-/** A horned stone colossus standing on the first burning district, towering over the rest. */
-function createGiantEffect(incident: Incident, locator: EffectLocator): GiantEffect {
+/** Where the colossus stands relative to a plaza: behind it and to the left of the town hall, so neither the hall nor its nameplate hides it. */
+const GIANT_STANCE = fromScreenAxes(-4.6, -5.4);
+
+/** The colossus stands on the first troubled district and looms over the rest. */
+function createGiant(incident: Incident, locator: EffectLocator, assets: RenderAssets): EffectVisual {
   const group = new THREE.Group();
-  group.name = `effect:giant:${incident.id}`;
-  const firstDistrict = incident.targets.districts[0];
-  const anchor = (firstDistrict ? locator.district(firstDistrict) : null) ?? incident.focus;
-  // Stand just behind the HQ so the giant reads as looming over the district.
-  group.position.set(anchor.x - 2.2, 0, anchor.z - 2.2);
+  const first = incident.targets.districts[0];
+  const anchor = (first ? locator(first) : null) ?? incident.focus;
+  group.position.set(anchor.x + GIANT_STANCE.x, 0, anchor.z + GIANT_STANCE.z);
   group.rotation.y = Math.PI / 4;
-  group.scale.setScalar(1.35);
-
-  const skin = new THREE.MeshStandardMaterial({ color: 0x704766, flatShading: true, roughness: 0.85 });
-  const skinLight = new THREE.MeshStandardMaterial({ color: 0x8e5a7d, flatShading: true, roughness: 0.85 });
-  const hornMaterial = new THREE.MeshStandardMaterial({ color: 0x40354d, flatShading: true });
-  const eyeMaterial = new THREE.MeshBasicMaterial({ color: 0xffd666 });
-
-  const body = new THREE.Mesh(new THREE.DodecahedronGeometry(1.8, 0), skin);
-  body.position.y = 4.1;
-  body.scale.set(1.35, 1.55, 1.05);
-  const head = new THREE.Mesh(new THREE.DodecahedronGeometry(1.1, 0), skinLight);
-  head.position.set(0, 7, 0.2);
-  group.add(body, head);
-
-  const legGeometry = new THREE.CylinderGeometry(0.55, 0.7, 2.6, 6);
-  const armGeometry = new THREE.CylinderGeometry(0.38, 0.5, 3, 6);
-  const hornGeometry = new THREE.ConeGeometry(0.34, 1.2, 5);
-  const eyeGeometry = new THREE.SphereGeometry(0.2, 8, 6);
-  for (const side of [-1, 1]) {
-    const leg = new THREE.Mesh(legGeometry, skin);
-    leg.position.set(side * 0.95, 1.3, 0);
-    const arm = new THREE.Mesh(armGeometry, skinLight);
-    arm.position.set(side * 2.6, 4.2, 0.3);
-    arm.rotation.z = side * 0.5;
-    const horn = new THREE.Mesh(hornGeometry, hornMaterial);
-    horn.position.set(side * 0.72, 8.05, 0);
-    horn.rotation.z = -side * 0.38;
-    const eye = new THREE.Mesh(eyeGeometry, eyeMaterial);
-    eye.position.set(side * 0.38, 7.12, 1.02);
-    group.add(leg, arm, horn, eye);
+  const phase = seededRange(hashString(incident.id), 9, 0, Math.PI * 2);
+  for (const part of assets.kit.parts("giant")) {
+    const mesh = new THREE.Mesh(part.geometry, part.material);
+    mesh.castShadow = true;
+    group.add(mesh);
   }
-  return { kind: "giant", group, body, head, phase: seededRange(hashString(incident.id), 9, 0, Math.PI * 2) };
+  return {
+    group,
+    animate(time: number): void {
+      // A slow, heavy sway from the feet.
+      group.rotation.y = Math.PI / 4 + Math.sin(time * 0.5 + phase) * 0.12;
+      group.rotation.z = Math.sin(time * 0.8 + phase) * 0.025;
+    },
+  };
 }
 
 function createEffectVisual(incident: VisibleIncident, locator: EffectLocator, assets: RenderAssets): EffectVisual {
-  if (incident.effect === "fire") return createFireEffect(incident, locator, assets);
-  if (incident.effect === "smoke") return createSmokeEffect(incident, locator, assets);
-  if (incident.effect === "crowd") return createCrowdEffect(incident, locator);
-  if (incident.effect === "storm") return createStormEffect(incident, locator);
-  return createGiantEffect(incident, locator);
+  if (incident.effect === "fire") return createFire(incident, assets);
+  if (incident.effect === "smoke") return createSmoke(incident, assets);
+  if (incident.effect === "crowd") return createCrowd(incident);
+  if (incident.effect === "storm") return createStorm(incident, locator);
+  return createGiant(incident, locator, assets);
 }
 
-function updateEffectVisual(visual: EffectVisual, time: number): void {
-  if (visual.kind === "fire") {
-    for (let index = 0; index < visual.flames.length; index += 1) {
-      const flame = visual.flames[index];
-      if (!flame) continue;
-      const pulse = 0.78 + Math.sin(time * 8 + visual.phase + index) * 0.2;
-      flame.scale.set(pulse, 0.75 + pulse * 0.42, pulse);
-      flame.position.y = 0.42 + Math.sin(time * 6 + index) * 0.13;
-    }
-    for (let index = 0; index < visual.smoke.length; index += 1) {
-      const puff = visual.smoke[index];
-      if (!puff) continue;
-      puff.position.y = 1.2 + index * 0.31 + ((time * 0.38 + index * 0.17) % 1) * 0.7;
-      puff.material.opacity = 0.48 - index * 0.045;
-    }
-    return;
-  }
-  if (visual.kind === "smoke") {
-    for (let index = 0; index < visual.puffs.length; index += 1) {
-      const puff = visual.puffs[index];
-      if (!puff) continue;
-      puff.position.y = 0.7 + index * 0.28 + ((time * 0.32 + index * 0.13) % 1) * 0.8;
-      const scale = 0.7 + index * 0.08 + Math.sin(time + index) * 0.06;
-      puff.scale.set(scale, scale, 1);
-    }
-    return;
-  }
-  if (visual.kind === "crowd") {
-    const pulse = 0.94 + Math.sin(time * 2.6 + visual.phase) * 0.07;
-    visual.ring.scale.set(pulse, pulse, pulse);
-    visual.ring.rotation.z = time * 0.18;
-    for (let index = 0; index < visual.cluster.length; index += 1) {
-      const person = visual.cluster[index];
-      if (person) person.position.y = 0.24 + Math.sin(time * 3 + index) * 0.055;
-    }
-    return;
-  }
-  if (visual.kind === "storm") {
-    for (let index = 0; index < visual.clouds.length; index += 1) {
-      const cloud = visual.clouds[index];
-      const baseY = visual.cloudHeights[index];
-      if (cloud && baseY !== undefined) cloud.position.y = baseY + Math.sin(time + index) * 0.13;
-    }
-    for (let index = 0; index < visual.rain.length; index += 1) {
-      const rain = visual.rain[index];
-      if (rain) rain.position.y = -((time * 3.2 + index * 0.2) % 0.82);
-    }
-    return;
-  }
-  visual.body.rotation.y = Math.sin(time * 0.5 + visual.phase) * 0.16;
-  visual.head.position.y = 7 + Math.sin(time * 1.4 + visual.phase) * 0.16;
-}
-
-function disposeEffectMaterial(material: THREE.Material | THREE.Material[], disposed: Set<THREE.Material>): void {
-  if (Array.isArray(material)) {
-    for (let index = 0; index < material.length; index += 1) {
-      const candidate = material[index];
-      if (candidate && !disposed.has(candidate)) {
-        candidate.dispose();
-        disposed.add(candidate);
-      }
-    }
-    return;
-  }
-  if (!disposed.has(material)) {
-    material.dispose();
-    disposed.add(material);
-  }
-}
-
-function disposeEffectVisual(visual: EffectVisual): void {
-  const disposedMaterials = new Set<THREE.Material>();
+/** Frees what an effect made. Kit geometry and materials (the giant) belong to the kit and stay. */
+function disposeEffectVisual(visual: EffectVisual, assets: RenderAssets): void {
+  const kitGeometries = new Set(assets.kit.parts("giant").map((part) => part.geometry));
+  const done = new Set<THREE.Material | THREE.BufferGeometry>();
   visual.group.traverse((node) => {
-    if (node instanceof THREE.Mesh || node instanceof THREE.Line || node instanceof THREE.LineSegments) {
-      node.geometry.dispose();
-      disposeEffectMaterial(node.material, disposedMaterials);
+    if (node instanceof THREE.Sprite) {
+      if (!done.has(node.material)) node.material.dispose();
+      done.add(node.material);
+      return;
     }
-    if (node instanceof THREE.Sprite) disposeEffectMaterial(node.material, disposedMaterials);
+    if (!(node instanceof THREE.Mesh || node instanceof THREE.LineSegments) || kitGeometries.has(node.geometry)) return;
+    for (const item of [node.geometry, node.material] as (THREE.Material | THREE.BufferGeometry)[]) {
+      if (!done.has(item)) item.dispose();
+      done.add(item);
+    }
   });
   visual.group.clear();
 }
@@ -418,16 +267,16 @@ export function createEffectSlot(initial: VisibleIncident, locator: EffectLocato
       const nextSignature = incidentSignature(next);
       if (nextSignature === signature) return;
       group.remove(visual.group);
-      disposeEffectVisual(visual);
+      disposeEffectVisual(visual, assets);
       visual = createEffectVisual(next, nextLocator, assets);
       group.add(visual.group);
       signature = nextSignature;
     },
     animate(time: number): void {
-      updateEffectVisual(visual, time);
+      visual.animate(time);
     },
     dispose(): void {
-      disposeEffectVisual(visual);
+      disposeEffectVisual(visual, assets);
       group.removeFromParent();
     },
   };

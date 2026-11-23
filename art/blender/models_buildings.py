@@ -1,4 +1,4 @@
-"""District headquarters."""
+"""A district's town hall, and the waystation that stands on the outskirts island."""
 
 import math
 
@@ -73,7 +73,7 @@ def stone_course(m, x0, x1, y0, y1, z0, rows=2, height=0.14):
         for (a0, a1, fixed, axis) in ((x0, x1, y0, "x"), (x0, x1, y1, "x"), (y0, y1, x0, "y"), (y0, y1, x1, "y")):
             pos = a0 + (0.12 if row % 2 else 0.0)
             while pos < a1 - 0.05:
-                length = min(m.rng.uniform(0.24, 0.42), a1 - pos)
+                length = min(m.rng.uniform(0.4, 0.62), a1 - pos)
                 centre = pos + length / 2
                 mat = "Stone" if m.rng.random() < 0.6 else "StoneDark"
                 depth = 0.07 + m.rng.uniform(0, 0.025)
@@ -84,7 +84,7 @@ def stone_course(m, x0, x1, y0, y1, z0, rows=2, height=0.14):
                 pos += length
 
 
-def gable_roof(m, x0, x1, eave_y, eave_z, ridge_z, rows=7):
+def gable_roof(m, x0, x1, eave_y, eave_z, ridge_z, rows=5):
     """Two shingled slopes along X with a ridge cap."""
     run = eave_y
     rise = ridge_z - eave_z
@@ -102,7 +102,7 @@ def gable_roof(m, x0, x1, eave_y, eave_z, ridge_z, rows=7):
             z = eave_z + rise * t + 0.05 + 0.01 * (rows - row)
             pos = x0 - (0.16 if row % 2 else 0.0)
             while pos < x1 - 0.02:
-                w = min(m.rng.uniform(0.27, 0.36), x1 - pos)
+                w = min(m.rng.uniform(0.42, 0.58), x1 - pos)
                 if w > 0.08:
                     mat = "Roof" if m.rng.random() < 0.7 else "RoofLight"
                     wobble = m.rng.uniform(-0.03, 0.03)
@@ -194,4 +194,35 @@ def town_hall(seed=11):
     m.box((0.46, 0.03, 0.82), (tx, ty - 0.535, 3.12), "Accent")
     m.prism([(-0.23, 0), (0.23, 0), (0, 0.18)], 0.03, (tx, ty - 0.535, 2.71), "Accent", rot=(math.pi, 0, 0))
     m.ico(0.07, (tx, ty - 0.56, 3.2), "Brass", subdivisions=1, scale=(1, 0.4, 1))
+    return m.build()
+
+
+def waystation(seed=141):
+    """Centrepiece of the outskirts island: a stone hut with a signpost, for pipelines whose repository is not watched."""
+    m = Model("waystation", seed)
+    m.cylinder(1.75, 1.8, 0.18, (0, 0, 0), "StoneDark", segments=10, bevel=0.03)
+    # The hut: limestone walls, a dark doorway under an arch, a slate roof with its gable to the viewer.
+    hx, hy = -0.25, 0.2
+    m.box((1.9, 1.5, 1.4), (hx, hy, 0.88), "Limestone", bevel=0.03)
+    stone_course(m, hx - 0.96, hx + 0.96, hy - 0.76, hy + 0.76, 0.18, rows=1, height=0.2)
+    m.box((0.62, 0.1, 0.86), (hx, hy - 0.76, 0.61), "Dark")
+    m.cylinder(0.31, 0.31, 0.1, (hx, hy - 0.72, 1.04), "Dark", segments=10, rot=(math.pi / 2, 0, 0))
+    m.cylinder(0.4, 0.4, 0.08, (hx, hy - 0.7, 1.04), "LimestoneDark", segments=10, rot=(math.pi / 2, 0, 0))
+    m.box((0.3, 0.08, 0.34), (hx + 0.96, hy, 1.0), "Glass", rot=(0, 0, math.pi / 2))
+    for side in (-1, 1):
+        m.box((1.34, 1.9, 0.1), (hx + side * 0.55, hy, 2.02), "Roof", rot=(0, -side * 0.68, 0))
+    m.prism([(-0.95, 1.58), (0.95, 1.58), (0, 2.42)], 1.5, (hx, hy, 0), "Limestone")
+    m.cylinder(0.08, 0.08, 1.96, (hx, hy - 0.98, 2.44), "RoofLight", segments=6, rot=(-math.pi / 2, 0, 0))
+    # A lantern by the door.
+    m.box((0.06, 0.3, 0.06), (hx + 0.62, hy - 0.9, 1.5), "Metal")
+    m.box((0.2, 0.2, 0.26), (hx + 0.62, hy - 1.02, 1.3), "Lamp", bevel=0.015)
+    # The signpost: three boards pointing three ways.
+    sx, sy = 1.15, -1.0
+    m.box((0.1, 0.1, 1.9), (sx, sy, 0.95), "Wood")
+    for i, (turn, colour) in enumerate(((0.3, "Wood"), (-0.5, "WoodDark"), (1.2, "Wood"))):
+        m.box((0.8, 0.06, 0.2), (sx + math.cos(turn) * 0.3, sy + math.sin(turn) * 0.3, 1.7 - i * 0.28), colour, rot=(0, 0, turn), bevel=0.015)
+    # Cargo passing through.
+    for (x, y, s) in ((-1.25, -0.95, 0.42), (-0.82, -1.2, 0.32)):
+        m.box((s, s, s), (x, y, 0.18 + s / 2), "Wood", rot=(0, 0, m.rng.uniform(-0.3, 0.3)), bevel=0.02)
+    m.cylinder(0.18, 0.18, 0.44, (0.9, 0.95, 0.18), "WoodDark", segments=8)
     return m.build()

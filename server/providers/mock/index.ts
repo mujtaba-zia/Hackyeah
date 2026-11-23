@@ -205,13 +205,20 @@ function parseRun(value: unknown, scenario: string, pipelinePath: string, index:
   const record = requiredObject(value, scenario, path);
   const ageHours = requiredNumber(record, "ageHours", scenario, path);
   const result = enumValue(record, "result", RUN_RESULTS, scenario, path);
+  // `ageHours` is when a finished run ended (or when an unfinished one began);
+  // optional `minutes` is how long a finished run took.
   const timestamp = ageTimestamp(now, ageHours);
   const run: PipelineRun = {
     id: requiredString(record, "id", scenario, path),
     result,
     startedAt: timestamp,
   };
-  if (COMPLETED_RUN_RESULTS[result]) run.finishedAt = timestamp;
+  if (COMPLETED_RUN_RESULTS[result]) {
+    run.finishedAt = timestamp;
+    if (record.minutes !== undefined) {
+      run.startedAt = ageTimestamp(now, ageHours + requiredNumber(record, "minutes", scenario, path) / 60);
+    }
+  }
   const branch = optionalString(record, "branch", scenario, path);
   const url = optionalString(record, "url", scenario, path);
   if (branch !== undefined) run.branch = branch;

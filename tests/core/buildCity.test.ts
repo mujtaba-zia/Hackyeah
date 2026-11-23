@@ -1,7 +1,19 @@
 import { describe, expect, it } from "vitest";
-import { HQ_FOOTPRINT, TOWER_FOOTPRINT, TOWER_SLOTS, TOWER_SPACING, buildCity } from "../../core/buildCity";
+import { buildCity } from "../../core/buildCity";
+import {
+  GROUP_GAP,
+  HQ_FOOTPRINT,
+  ISLAND_GAP,
+  ISLAND_SIZES,
+  NURSERY_MARGIN,
+  TOWER_FOOTPRINT,
+  TOWER_SPACING,
+  islandSizeFor,
+  towerSlots,
+} from "../../core/layout";
 import { selectRepos } from "../../core/selectRepos";
 import { DEFAULT_CONFIG } from "../../shared/config";
+import { ISLAND_USABLE, VIEW_CORRIDOR } from "../../shared/geometry";
 import { RULE_IDS } from "../../shared/types";
 import type {
   AppConfig,
@@ -238,49 +250,56 @@ describe("buildCity pipelines", () => {
     expect(city.towers[0]?.history.map((run) => run.result)).toEqual(runs.slice(0, 10).map((run) => run.result));
   });
 
-  it("places a pipeline with an unknown home on the always-present outskirts island", () => {
+  it("puts a pipeline with an unknown home on an outskirts island that exists only while it is needed", () => {
     const repo = makeRepo("mock:app", "app");
-    const city = buildCity(
-      makeSnapshot([repo], [], [makePipeline("external", "external-ci", "mock:unknown", { coversRepoIds: [repo.id] })]),
-      makeConfig({ rules: onlyRules() }),
-      NOW,
-    );
+    const config = makeConfig({ rules: onlyRules() });
+    const homeless = makePipeline("external", "external-ci", "mock:unknown", { coversRepoIds: [repo.id] });
+    const city = buildCity(makeSnapshot([repo], [], [homeless]), config, NOW);
     const outskirts = city.islands.find((island) => island.id === "outskirts");
     const tower = city.towers[0];
 
-    expect(outskirts).toBeDefined();
+    expect(outskirts?.kind).toBe("outskirts");
+    expect(city.groups.at(-1)).toMatchObject({ id: "outskirts", islandIds: ["outskirts"] });
     expect(tower?.islandId).toBe("outskirts");
-    expect(tower?.position.x).toBeGreaterThanOrEqual(outskirts?.origin.x ?? Number.POSITIVE_INFINITY);
-    expect(tower?.position.z).toBeGreaterThanOrEqual(outskirts?.origin.z ?? Number.POSITIVE_INFINITY);
+    expect(tower?.coversDistrictIds).toEqual([repo.id]);
+    expect(tower?.position.x).toBeGreaterThan(outskirts?.origin.x ?? Number.POSITIVE_INFINITY);
+    expect(tower?.position.z).toBeGreaterThan(outskirts?.origin.z ?? Number.POSITIVE_INFINITY);
+
+    const withoutHomeless = buildCity(makeSnapshot([repo]), config, NOW);
+    expect(withoutHomeless.islands.map((island) => island.id)).toEqual([repo.id]);
+    expect(withoutHomeless.groups.map((group) => group.id)).toEqual(["project:mock"]);
   });
 
-  it("gives a busy district room for 40 well-spaced towers, all on the island and clear of each other", () => {
-    expect(TOWER_SLOTS.length).toBeGreaterThanOrEqual(40);
+  it.each(ISLAND_SIZES)("fills a %i-unit island with well-spaced towers that stay on it and off the plaza view", (size) => {
     const repo = makeRepo("mock:busy", "busy");
-    const pipelines = TOWER_SLOTS.map((_, index) => makePipeline(`p${index}`, `pipeline-${index}`, repo.id));
+    const pipelines = towerSlots(size).map((_, index) => makePipeline(`p${index}`, `pipeline-${index}`, repo.id));
     const city = buildCity(makeSnapshot([repo], [], pipelines), makeConfig({ rules: onlyRules() }), NOW);
     const island = city.islands.find((candidate) => candidate.id === repo.id)!;
     const district = city.districts[0]!;
     const centre = { x: island.origin.x + island.size.x / 2, z: island.origin.z + island.size.z / 2 };
-    // The island outline wobbles down to 0.88 of its half-size; keep everything inside that.
-    const usable = (island.size.x / 2) * 0.88;
+    // The shoreline never comes closer than this share of the half-size.
+    const usable = (island.size.x / 2) * ISLAND_USABLE;
     const distance = (a: { x: number; z: number }, b: { x: number; z: number }) => Math.hypot(a.x - b.x, a.z - b.z);
-    const TOWER = TOWER_FOOTPRINT;
-    const HQ = HQ_FOOTPRINT;
 
-    expect(distance(district.hq, centre) + HQ).toBeLessThanOrEqual(usable);
-    expect(distance(district.nursery.center, centre) + district.nursery.radius + 0.6).toBeLessThanOrEqual(usable);
-    expect(distance(district.hq, district.plaza.center)).toBeGreaterThan(district.plaza.radius + 0.4 + HQ);
-    expect(city.towers).toHaveLength(TOWER_SLOTS.length);
+    expect(island.size).toEqual({ x: size, z: size });
+    expect(distance(district.hq, centre) + HQ_FOOTPRINT).toBeLessThanOrEqual(usable);
+    expect(distance(district.nursery.center, centre) + district.nursery.radius + NURSERY_MARGIN).toBeLessThanOrEqual(usable);
+    expect(distance(district.hq, district.plaza.center)).toBeGreaterThan(district.plaza.radius + 0.4 + HQ_FOOTPRINT);
+    expect(distance(district.nursery.center, district.plaza.center)).toBeGreaterThan(
+      district.plaza.radius + district.nursery.radius + NURSERY_MARGIN,
+    );
+    expect(city.towers).toHaveLength(pipelines.length);
     for (const tower of city.towers) {
-      expect(distance(tower.position, centre) + TOWER).toBeLessThanOrEqual(usable);
-      expect(distance(tower.position, district.plaza.center)).toBeGreaterThan(district.plaza.radius + 0.4 + TOWER);
-      expect(distance(tower.position, district.hq)).toBeGreaterThan(HQ + TOWER);
-      expect(distance(tower.position, district.nursery.center)).toBeGreaterThan(district.nursery.radius + 0.6 + TOWER);
-      // Nothing stands in the strip between the camera (looking from +x/+z) and the plaza.
+      expect(distance(tower.position, centre) + TOWER_FOOTPRINT).toBeLessThanOrEqual(usable);
+      expect(distance(tower.position, district.plaza.center)).toBeGreaterThan(district.plaza.radius + 0.4 + TOWER_FOOTPRINT);
+      expect(distance(tower.position, district.hq)).toBeGreaterThan(HQ_FOOTPRINT + TOWER_FOOTPRINT);
+      expect(distance(tower.position, district.nursery.center)).toBeGreaterThan(
+        district.nursery.radius + NURSERY_MARGIN + TOWER_FOOTPRINT - 0.001,
+      );
+      // Nothing tall stands between the camera (looking from +x/+z) and the plaza.
       const across = (tower.position.x - centre.x - (tower.position.z - centre.z)) / Math.SQRT2;
       const depth = (tower.position.x - centre.x + (tower.position.z - centre.z)) / Math.SQRT2;
-      expect(depth > 0 && depth < 8.5 && Math.abs(across) < 3.6).toBe(false);
+      expect(depth > 0.001 && Math.abs(across) < VIEW_CORRIDOR - 0.001).toBe(false);
       for (const other of city.towers) {
         if (other === tower) continue;
         expect(distance(tower.position, other.position)).toBeGreaterThanOrEqual(TOWER_SPACING - 0.01);
@@ -290,6 +309,29 @@ describe("buildCity pipelines", () => {
         if (Math.abs(across - otherAcross) < 1) expect(Math.abs(depth - otherDepth)).toBeGreaterThan(4.7);
       }
     }
+  });
+
+  it("grows an island with its pipelines without moving the towers already standing", () => {
+    const repo = makeRepo("mock:app", "app");
+    const small = ISLAND_SIZES[0]!;
+    const capacity = towerSlots(small).length;
+    const config = makeConfig({ rules: onlyRules() });
+    const pipelinesFor = (count: number) =>
+      Array.from({ length: count }, (_, index) => makePipeline(`p${index}`, `pipeline-${String(index).padStart(3, "0")}`, repo.id));
+    const relativeSpots = (city: CityModel) => {
+      const island = city.islands[0]!;
+      return city.towers.map((tower) => [
+        Math.round((tower.position.x - island.origin.x - island.size.x / 2) * 100),
+        Math.round((tower.position.z - island.origin.z - island.size.z / 2) * 100),
+      ]);
+    };
+    const before = buildCity(makeSnapshot([repo], [], pipelinesFor(capacity)), config, NOW);
+    const after = buildCity(makeSnapshot([repo], [], pipelinesFor(capacity + 1)), config, NOW);
+
+    expect(islandSizeFor(0)).toBe(small);
+    expect(before.islands[0]?.size.x).toBe(small);
+    expect(after.islands[0]?.size.x).toBeGreaterThan(small);
+    expect(relativeSpots(after).slice(0, capacity)).toEqual(relativeSpots(before));
   });
 });
 
@@ -592,5 +634,73 @@ describe("buildCity layout", () => {
         expect(overlaps(left, right)).toBe(false);
       }
     }
+  });
+
+  it("gathers each project's repositories into its own archipelago, bridged inside and apart from the others", () => {
+    const inProject = (id: string, name: string, project: string): RepoInfo => ({ id, name, project });
+    const repos = [
+      inProject("mock:web", "web", "Storefront"),
+      inProject("mock:auth", "auth", "Platform"),
+      inProject("mock:api", "api", "Storefront"),
+      inProject("mock:queue", "queue", "Platform"),
+      inProject("mock:cdn", "cdn", "Platform"),
+      inProject("mock:docs", "docs", "Guides"),
+    ];
+    const heavy = Array.from({ length: towerSlots(ISLAND_SIZES[0]!).length + 3 }, (_, index) =>
+      makePipeline(`queue-${index}`, `queue-${index}`, "mock:queue"),
+    );
+    const failing = makePipeline("api-ci", "api-ci", "mock:api", { runs: [{ id: "1", result: "failure" }] });
+    const city = buildCity(makeSnapshot(repos, [], [...heavy, failing]), makeConfig({ rules: onlyRules("pipelineFailing") }), NOW);
+    const islandsById = new Map(city.islands.map((island) => [island.id, island]));
+    const groupOf = new Map(city.groups.flatMap((group) => group.islandIds.map((islandId) => [islandId, group] as const)));
+    const gapBetween = (
+      left: { origin: { x: number; z: number }; size: { x: number; z: number } },
+      right: { origin: { x: number; z: number }; size: { x: number; z: number } },
+    ) =>
+      Math.max(
+        left.origin.x - (right.origin.x + right.size.x),
+        right.origin.x - (left.origin.x + left.size.x),
+        left.origin.z - (right.origin.z + right.size.z),
+        right.origin.z - (left.origin.z + left.size.z),
+      );
+
+    expect(city.groups.map((group) => [group.name, group.islandIds, group.health])).toEqual([
+      ["Guides", ["mock:docs"], "good"],
+      ["Platform", ["mock:auth", "mock:cdn", "mock:queue"], "good"],
+      ["Storefront", ["mock:api", "mock:web"], "bad"],
+    ]);
+    // The busy repository gets a bigger island than its neighbours.
+    expect(islandsById.get("mock:queue")!.size.x).toBeGreaterThan(islandsById.get("mock:auth")!.size.x);
+    for (const group of city.groups) {
+      for (const islandId of group.islandIds) {
+        const island = islandsById.get(islandId)!;
+        expect(island.origin.x).toBeGreaterThanOrEqual(group.origin.x);
+        expect(island.origin.z).toBeGreaterThanOrEqual(group.origin.z);
+        expect(island.origin.x + island.size.x).toBeLessThanOrEqual(group.origin.x + group.size.x);
+        expect(island.origin.z + island.size.z).toBeLessThanOrEqual(group.origin.z + group.size.z);
+      }
+    }
+    // Neighbours within a project are a bridge apart; islands of different projects have open sky between them.
+    for (const left of city.islands) {
+      for (const right of city.islands) {
+        if (left === right) continue;
+        const sameProject = groupOf.get(left.id) === groupOf.get(right.id);
+        expect(gapBetween(left, right)).toBeGreaterThanOrEqual(sameProject ? ISLAND_GAP : GROUP_GAP);
+      }
+    }
+    // Bridges join neighbours of one project, shore to shore, and never cross between projects.
+    expect(city.bridges.map((bridge) => bridge.id).sort()).toEqual(["mock:api->mock:web", "mock:auth->mock:cdn", "mock:auth->mock:queue"]);
+    for (const bridge of city.bridges) {
+      const [fromId, toId] = bridge.id.split("->") as [string, string];
+      const from = islandsById.get(fromId)!;
+      const to = islandsById.get(toId)!;
+      expect(groupOf.get(fromId)).toBe(groupOf.get(toId));
+      const onShore = (island: typeof from, end: { x: number; z: number }) =>
+        [island.origin.x, island.origin.x + island.size.x].includes(end.x) || [island.origin.z, island.origin.z + island.size.z].includes(end.z);
+      expect(onShore(from, bridge.from)).toBe(true);
+      expect(onShore(to, bridge.to)).toBe(true);
+    }
+    expect(city.worldSize.x).toBe(Math.max(...city.islands.map((island) => island.origin.x + island.size.x)));
+    expect(city.worldSize.z).toBe(Math.max(...city.islands.map((island) => island.origin.z + island.size.z)));
   });
 });

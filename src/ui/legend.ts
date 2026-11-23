@@ -1,7 +1,8 @@
 import type { CityModel, EffectKind, Mood, RunResult } from "../../shared/types";
 import type { Store, UiState } from "../app/store";
-import { copy, effectLabel, moodLabel, pipelineLegendLabel, resultLabel } from "./copy";
+import { copy, effectLabel, moodLabel, pipelineLegendLabel, resultLabel, worldLegend } from "./copy";
 import { el } from "./dom";
+import { dot, type DotKind } from "./parts";
 
 function tally<K extends string>(keys: readonly K[], values: readonly K[]): Record<K, number> {
   const counts = Object.fromEntries(keys.map((key) => [key, 0])) as Record<K, number>;
@@ -9,14 +10,14 @@ function tally<K extends string>(keys: readonly K[], values: readonly K[]): Reco
   return counts;
 }
 
-function section<K extends string>(heading: string, labels: Record<K, string>, counts: Record<K, number>, swatchClass: string): HTMLElement {
+function section<K extends string>(heading: string, labels: Record<K, string>, counts: Record<K, number>, kind: DotKind | "effect"): HTMLElement {
   const list = el("ul", { class: "legend-list" });
   for (const key of Object.keys(labels) as K[]) {
     list.append(
       el(
         "li",
         { class: counts[key] > 0 ? "" : "muted" },
-        el("span", { class: `swatch ${swatchClass}-${key}`, attrs: { "aria-hidden": "true" } }),
+        kind === "effect" ? el("i", { class: "dot", attrs: { "data-effect": key, "aria-hidden": "true" } }) : dot(kind, key),
         el("span", { text: labels[key] }),
         el("span", { class: "count", text: counts[key] > 0 ? String(counts[key]) : "" }),
       ),
@@ -39,7 +40,8 @@ export function legendCounts(city: CityModel | null | undefined): {
 
 export function mountLegend(panel: HTMLElement, store: Store): void {
   const body = el("div", { class: "legend-body" });
-  panel.append(el("header", {}, el("h2", { text: copy.legend })), body);
+  const world = el("ul", { class: "legend-notes" }, ...worldLegend.map((text) => el("li", { text })));
+  panel.append(el("header", {}, el("h2", { text: copy.legend })), el("section", {}, el("h3", { text: "Reading the world" }), world), body);
 
   let lastCity: unknown = undefined;
   function render(state: UiState): void {
@@ -49,9 +51,9 @@ export function mountLegend(panel: HTMLElement, store: Store): void {
     lastCity = city;
     const counts = legendCounts(city);
     body.replaceChildren(
-      section("Pull requests", moodLabel, counts.moods, "mood"),
-      section("Pipelines", pipelineLegendLabel, counts.results, "result"),
-      section("Problems", effectLabel, counts.effects, "effect"),
+      section(copy.pullRequests, moodLabel, counts.moods, "mood"),
+      section(copy.pipelines, pipelineLegendLabel, counts.results, "status"),
+      section(copy.problems, effectLabel, counts.effects, "effect"),
     );
   }
 

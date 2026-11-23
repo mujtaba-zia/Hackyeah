@@ -3,8 +3,9 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { describe, expect, it } from "vitest";
 import type { RunResult } from "../../shared/types";
-import { TOWER_MODELS, TOWER_STAGE } from "../../src/render/buildings";
-import { KIT_MODELS, kitFromScene } from "../../src/render/kit";
+import { ModelBatch } from "../../src/render/batch";
+import { KIT_MODELS, kitFromScene, type ModelKit } from "../../src/render/kit";
+import { TOWER_MODELS, TOWER_STAGE } from "../../src/render/towers";
 
 function namedMaterial(name: string): THREE.MeshStandardMaterial {
   const material = new THREE.MeshStandardMaterial();
@@ -26,6 +27,12 @@ function sceneWith(models: readonly string[]): THREE.Group {
   return scene;
 }
 
+async function shippedKit(): Promise<ModelKit> {
+  const file = readFileSync(new URL("../../public/models/kit.glb", import.meta.url));
+  const buffer = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength);
+  return kitFromScene((await new GLTFLoader().parseAsync(buffer, "")).scene);
+}
+
 describe("model kit", () => {
   it("bakes each model into model space, ignoring where it sits in the file", () => {
     const kit = kitFromScene(sceneWith(KIT_MODELS));
@@ -42,42 +49,86 @@ describe("model kit", () => {
   it("swaps only the recoloured material and shares everything else", () => {
     const kit = kitFromScene(sceneWith(KIT_MODELS));
     const health = namedMaterial("good");
-    const first = kit.create("hq", { Accent: health });
-    const second = kit.create("hq");
-    const [firstMesh] = first.children as THREE.Mesh[];
-    const [secondMesh] = second.children as THREE.Mesh[];
-    expect(firstMesh!.material).toBe(health);
-    expect(secondMesh!.material).toBe(kit.template("hq", "Accent"));
-    expect(firstMesh!.geometry).toBe(secondMesh!.geometry);
+    const [swapped] = kit.parts("hq", { Accent: health });
+    const [plain] = kit.parts("hq");
+    const [untouched] = kit.parts("tower_ci", { Accent: health });
+    expect(swapped!.material).toBe(health);
+    expect(plain!.material).toBe(kit.template("hq", "Accent"));
+    expect(swapped!.geometry).toBe(plain!.geometry);
+    expect(untouched!.material.name).toBe("Stone");
+  });
+});
+
+describe("instanced batches", () => {
+  it("draws every copy of a model, however many, and names the one a ray hits", () => {
+    const geometry = new THREE.BoxGeometry(1, 1, 1);
+    geometry.computeBoundingSphere();
+    const batch = new ModelBatch([{ geometry, material: namedMaterial("Stone") }]);
+    const matrix = new THREE.Matrix4();
+    batch.begin();
+    // More copies than the batch starts with room for.
+    for (let index = 0; index < 40; index += 1) batch.add(`tower-${index}`, matrix.makeTranslation(index * 3, 0, 0));
+    batch.end();
+    batch.group.updateMatrixWorld(true);
+
+    const mesh = batch.group.children[0] as THREE.InstancedMesh;
+    expect(mesh.count).toBe(40);
+    const raycaster = new THREE.Raycaster(new THREE.Vector3(37 * 3, 10, 0), new THREE.Vector3(0, -1, 0));
+    expect(batch.pick(raycaster, [])?.id).toBe("tower-37");
+
+    // Refilling with fewer copies forgets the rest.
+    batch.begin();
+    batch.add("only", matrix.makeTranslation(0, 0, 0));
+    batch.end();
+    expect((batch.group.children[0] as THREE.InstancedMesh).count).toBe(1);
+    expect(batch.pick(raycaster, [])).toBeNull();
+  });
+
+  it("still finds an instance that moves after it has left the place it was first picked", () => {
+    const batch = new ModelBatch([{ geometry: new THREE.BoxGeometry(1, 1, 1), material: namedMaterial("Body") }], { animated: true });
+    const matrix = new THREE.Matrix4();
+    const standAt = (x: number): void => {
+      batch.begin();
+      batch.add("pr", matrix.makeTranslation(x, 0, 0));
+      batch.end();
+    };
+    const pickAbove = (x: number) => batch.pick(new THREE.Raycaster(new THREE.Vector3(x, 10, 0), new THREE.Vector3(0, -1, 0)), []);
+
+    standAt(0);
+    batch.group.updateMatrixWorld(true);
+    expect(pickAbove(0)?.id).toBe("pr");
+    standAt(40);
+    expect(pickAbove(40)?.id).toBe("pr");
+    expect(pickAbove(0)).toBeNull();
   });
 });
 
 describe("shipped kit", () => {
   it("contains every model and the materials the renderer recolours", async () => {
-    const file = readFileSync(new URL("../../public/models/kit.glb", import.meta.url));
-    const buffer = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength);
-    const gltf = await new GLTFLoader().parseAsync(buffer, "");
-    const kit = kitFromScene(gltf.scene);
+    const kit = await shippedKit();
     expect(kit.template("hq", "Accent").name).toBe("Accent");
-    expect(kit.template("tower_ci", "Beacon").name).toBe("Beacon");
-    expect(kit.template("tower_release", "Beacon").name).toBe("Beacon");
     expect(kit.template("creature", "Body").name).toBe("Body");
     expect(kit.template("egg", "Body").name).toBe("Body");
   });
 
-  it("gives every pipeline status a tower stage whose light shows the status colour", async () => {
-    const file = readFileSync(new URL("../../public/models/kit.glb", import.meta.url));
-    const buffer = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength);
-    const kit = kitFromScene((await new GLTFLoader().parseAsync(buffer, "")).scene);
-    const built = kit.top("tower_ci");
+  it("gives every pipeline status a tower stage that shows the status as paint and as light", async () => {
+    const kit = await shippedKit();
     for (const status of Object.keys(TOWER_STAGE) as RunResult[]) {
       for (const kind of ["ci", "release"] as const) {
-        expect(kit.template(TOWER_MODELS[kind][TOWER_STAGE[status]], "Beacon").name).toBe("Beacon");
+        const model = TOWER_MODELS[kind][TOWER_STAGE[status]];
+        expect(kit.template(model, "Status").name).toBe("Status");
+        expect(kit.template(model, "Beacon").name).toBe("Beacon");
       }
     }
-    // Under construction and broken towers read as shorter than a finished one.
-    expect(kit.top("tower_ci_building")).toBeLessThan(built);
-    expect(kit.top("tower_ci_broken")).toBeLessThan(built * 0.6);
-    expect(kit.top("tower_ci_foundation")).toBeLessThan(built * 0.35);
+  });
+
+  it("tells a tower's stage by its height: foundations low, a broken tower a stump, scaffolding in between", async () => {
+    const kit = await shippedKit();
+    for (const kind of ["ci", "release"] as const) {
+      const built = kit.top(TOWER_MODELS[kind].built);
+      expect(kit.top(TOWER_MODELS[kind].building)).toBeLessThan(built);
+      expect(kit.top(TOWER_MODELS[kind].broken)).toBeLessThan(built * 0.6);
+      expect(kit.top(TOWER_MODELS[kind].foundation)).toBeLessThan(built * 0.35);
+    }
   });
 });

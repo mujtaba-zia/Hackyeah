@@ -127,17 +127,32 @@ export interface Vec2 {
   z: number;
 }
 
-export type IslandKind = "district" | "outskirts" | "filler";
+export type IslandKind = "district" | "outskirts";
 
 export interface Island {
-  /** District islands reuse the repo id; outskirts is `outskirts`; fillers `filler:<n>`. */
+  /** District islands reuse the repo id; the outskirts island is `outskirts`. */
   id: string;
   kind: IslandKind;
   /** Minimum corner. */
   origin: Vec2;
+  /** Square, and as large as the island's towers need. */
   size: Vec2;
   /** Stable per island, for scenery/rock variation. */
   seed: number;
+}
+
+/** The islands of one project (ADO project, GitHub owner, mock group), laid out side by side. */
+export interface IslandGroup {
+  /** `project:<name>`; the outskirts island forms the group `outskirts`. */
+  id: string;
+  name: string;
+  /** Its islands, in layout order. */
+  islandIds: string[];
+  /** Bounding box of its islands. */
+  origin: Vec2;
+  size: Vec2;
+  /** The worst health among its districts. */
+  health: Health;
 }
 
 export type Health = "good" | "warn" | "bad";
@@ -185,7 +200,7 @@ export interface Tower {
   status: RunResult;
   failStreak: number;
   /** Newest first, at most 10. */
-  history: { result: RunResult; finishedAt?: Iso; url?: string }[];
+  history: { result: RunResult; startedAt?: Iso; finishedAt?: Iso; branch?: string; url?: string }[];
   coversDistrictIds: string[];
   url?: string;
 }
@@ -217,6 +232,8 @@ export interface CityModel {
   generatedAt: Iso;
   /** Bounding box of every island, from (0,0). */
   worldSize: Vec2;
+  /** One per project, sorted by name; the outskirts group, when present, is last. */
+  groups: IslandGroup[];
   islands: Island[];
   districts: District[];
   creatures: Creature[];

@@ -50,13 +50,22 @@ PALETTE = {
     "Speckle": ("#8a6a46", 0.9, 0.0),
     "Flag": ("#2bb3a0", 0.8, 0.0),
     "Cloth": ("#d9cfb8", 0.9, 0.0),
+    "Whitewash": ("#f3eee2", 0.9, 0.0),
+    "Limestone": ("#e8dbbd", 0.9, 0.0),
+    "LimestoneDark": ("#bda781", 0.95, 0.0),
+    "Canvas": ("#efe3c6", 0.85, 0.0),
+    "Rope": ("#b89a62", 0.9, 0.0),
+    "Golem": ("#8d8a96", 0.95, 0.0),
+    "GolemDark": ("#5f5c6b", 0.95, 0.0),
     # Recoloured at runtime (default colours shown in the previews):
     "Accent": ("#3f9ad6", 0.7, 0.0),  # district health
     "Body": ("#7fd3ff", 0.55, 0.0),  # pull request mood
+    "Status": ("#4fd67f", 0.65, 0.0),  # pipeline status, as paint and cloth
 }
 EMISSIVE = {
     "Glass": ("#ffd98a", 1.4),
     "Lamp": ("#ffe2a0", 2.5),
+    "Eye": ("#ffcf3f", 3.0),
     "Beacon": ("#57d68d", 2.0),  # pipeline status, recoloured at runtime
 }
 
@@ -212,6 +221,15 @@ class Model:
             faces.append(self.bm.faces.new((front[i], front[(i + 1) % n], back[(i + 1) % n], back[i])))
         bmesh.ops.recalc_face_normals(self.bm, faces=faces)
         return self._finish_part(front + back, mat, bevel=bevel)
+
+    def turn(self, verts, rot, pivot=(0, 0, 0)):
+        """Rotates parts already made about a pivot: for leaning, toppled and fallen pieces."""
+        origin = Vector(pivot)
+        matrix = Euler(rot, "XYZ").to_matrix()
+        for vert in verts:
+            if vert.is_valid:
+                vert.co = origin + matrix @ (vert.co - origin)
+        return verts
 
     # --- output -----------------------------------------------------------
 

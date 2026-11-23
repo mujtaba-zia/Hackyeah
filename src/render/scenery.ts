@@ -1,98 +1,124 @@
+import { ISLAND_USABLE, VIEW_CORRIDOR, screenAxes } from "../../shared/geometry";
 import type { Island, Vec2 } from "../../shared/types";
 import { seededRange, seededUnit } from "./hash";
 
-export type SceneryKind = "tree" | "rock";
+export type SceneryKind = "tree" | "rock" | "bush" | "flowers";
+export type SceneryModel =
+  | "tree_pine"
+  | "tree_round"
+  | "tree_birch"
+  | "rock_1"
+  | "rock_2"
+  | "rock_3"
+  | "bush_1"
+  | "bush_2"
+  | "flowers_1"
+  | "flowers_2";
 
 export interface SceneryPlacement {
   kind: SceneryKind;
-  /** Which of the kit's tree or rock models to use. */
-  variant: 0 | 1 | 2;
+  model: SceneryModel;
   position: Vec2;
   scale: number;
   rotation: number;
 }
 
-const VARIANTS = [0, 1, 2] as const;
-
+/** What already stands on the island; scenery keeps off all of it. */
 export interface SceneryReservations {
+  /** The town hall, or the waystation on the outskirts island. */
   hq?: Vec2;
   plaza?: { center: Vec2; radius: number };
   nursery?: { center: Vec2; radius: number };
   towerPositions: readonly Vec2[];
 }
 
-function isInsideCircle(point: Vec2, center: Vec2, radius: number): boolean {
-  const x = point.x - center.x;
-  const z = point.z - center.z;
-  return x * x + z * z < radius * radius;
+interface KindRules {
+  models: readonly SceneryModel[];
+  /** Upper end of this kind's slice of the 0..1 draw that picks a kind. */
+  share: number;
+  /** Room it needs from the shore, buildings and other scenery. */
+  radius: number;
+  scale: readonly [number, number];
 }
 
-function hasClearance(point: Vec2, other: Vec2, distance: number): boolean {
-  const x = point.x - other.x;
-  const z = point.z - other.z;
-  return x * x + z * z >= distance * distance;
+const KINDS: Record<SceneryKind, KindRules> = {
+  tree: { models: ["tree_pine", "tree_round", "tree_birch"], share: 0.34, radius: 0.75, scale: [0.8, 1.3] },
+  rock: { models: ["rock_1", "rock_2", "rock_3"], share: 0.48, radius: 0.55, scale: [0.7, 1.25] },
+  bush: { models: ["bush_1", "bush_2"], share: 0.7, radius: 0.5, scale: [0.8, 1.3] },
+  flowers: { models: ["flowers_1", "flowers_2"], share: 1, radius: 0.3, scale: [0.85, 1.4] },
+};
+const KIND_ORDER: readonly SceneryKind[] = ["tree", "rock", "bush", "flowers"];
+
+/** Scenery items per square unit of island. */
+const DENSITY = 0.115;
+const HQ_CLEARANCE = 2.1;
+const TOWER_CLEARANCE = 1.75;
+const PLAZA_MARGIN = 0.55;
+const NURSERY_MARGIN = 0.7;
+/** Open ground kept where a bridge lands. */
+const PORT_CLEARANCE = 1.7;
+
+function within(point: Vec2, centre: Vec2, distance: number): boolean {
+  const x = point.x - centre.x;
+  const z = point.z - centre.z;
+  return x * x + z * z < distance * distance;
 }
 
-/** Returns whether one scenery item stays off every district working area. */
+/** Whether something of the given kind may stand at `position`. */
 export function isSceneryPlacementFree(
   island: Island,
-  placement: Vec2,
+  kind: SceneryKind,
+  position: Vec2,
   reservations: SceneryReservations,
 ): boolean {
-  // Island outlines are rounded and wobble down to 0.88 of the half-size, so
-  // keep scenery inside that circle with room for a crown or boulder.
-  const centre = { x: island.origin.x + island.size.x / 2, z: island.origin.z + island.size.z / 2 };
-  if (!isInsideCircle(placement, centre, (island.size.x / 2) * 0.88 - 0.6)) return false;
-  if (reservations.hq && !hasClearance(placement, reservations.hq, 2.3)) return false;
-  if (reservations.plaza && isInsideCircle(placement, reservations.plaza.center, reservations.plaza.radius + 0.9)) {
+  const { radius } = KINDS[kind];
+  const half = island.size.x / 2;
+  const centre = { x: island.origin.x + half, z: island.origin.z + island.size.z / 2 };
+  if (!within(position, centre, half * ISLAND_USABLE - radius)) return false;
+  for (const [x, z] of [[half, 0], [-half, 0], [0, half], [0, -half]] as const) {
+    if (within(position, { x: centre.x + x, z: centre.z + z }, PORT_CLEARANCE + radius)) return false;
+  }
+  if (reservations.hq && within(position, reservations.hq, HQ_CLEARANCE + radius)) return false;
+  if (reservations.plaza) {
+    if (within(position, reservations.plaza.center, reservations.plaza.radius + PLAZA_MARGIN + radius)) return false;
+    // Trees are tall: none between the camera and the plaza.
+    const { across, depth } = screenAxes(position.x - reservations.plaza.center.x, position.z - reservations.plaza.center.z);
+    if (kind === "tree" && depth > 0 && Math.abs(across) < VIEW_CORRIDOR) return false;
+  }
+  if (reservations.nursery && within(position, reservations.nursery.center, reservations.nursery.radius + NURSERY_MARGIN + radius)) {
     return false;
   }
-  if (
-    reservations.nursery &&
-    isInsideCircle(placement, reservations.nursery.center, reservations.nursery.radius + 0.85)
-  ) {
-    return false;
-  }
-
-  for (let index = 0; index < reservations.towerPositions.length; index += 1) {
-    const tower = reservations.towerPositions[index];
-    if (tower && !hasClearance(placement, tower, 2.4)) return false;
+  for (const tower of reservations.towerPositions) {
+    if (within(position, tower, TOWER_CLEARANCE + radius)) return false;
   }
   return true;
 }
 
 /**
- * Produces a deterministic mix of trees and rocks. The returned positions are
- * intentionally independent from incoming PR/pipeline status changes.
+ * A deterministic scatter of trees, boulders, shrubs and flowers. It depends
+ * only on the island and on what is built there, never on PR or pipeline status.
  */
 export function placeScenery(island: Island, reservations: SceneryReservations): SceneryPlacement[] {
   const placements: SceneryPlacement[] = [];
-  const target = island.kind === "filler" ? 30 : 42;
-  const attempts = target * 8;
+  const target = Math.round(island.size.x * island.size.z * DENSITY);
 
-  for (let index = 0; index < attempts && placements.length < target; index += 1) {
+  for (let index = 0; index < target * 5 && placements.length < target; index += 1) {
+    const draw = seededUnit(island.seed, index * 6);
+    const kind = KIND_ORDER.find((candidate) => draw < KINDS[candidate].share) ?? "flowers";
+    const rules = KINDS[kind];
     const position = {
-      x: seededRange(island.seed, index * 5, island.origin.x + 0.9, island.origin.x + island.size.x - 0.9),
-      z: seededRange(island.seed, index * 5 + 1, island.origin.z + 0.9, island.origin.z + island.size.z - 0.9),
+      x: seededRange(island.seed, index * 6 + 1, island.origin.x, island.origin.x + island.size.x),
+      z: seededRange(island.seed, index * 6 + 2, island.origin.z, island.origin.z + island.size.z),
     };
-    if (!isSceneryPlacementFree(island, position, reservations)) continue;
-
-    let clear = true;
-    for (let placedIndex = 0; placedIndex < placements.length; placedIndex += 1) {
-      const placed = placements[placedIndex];
-      if (placed && !hasClearance(position, placed.position, 1.25)) {
-        clear = false;
-        break;
-      }
-    }
-    if (!clear) continue;
+    if (!isSceneryPlacementFree(island, kind, position, reservations)) continue;
+    if (placements.some((placed) => within(position, placed.position, rules.radius + KINDS[placed.kind].radius))) continue;
 
     placements.push({
-      kind: seededUnit(island.seed, index * 5 + 2) > 0.42 ? "tree" : "rock",
-      variant: VARIANTS[Math.floor(seededUnit(island.seed, 10_000 + index) * VARIANTS.length)] ?? 0,
+      kind,
+      model: rules.models[Math.floor(seededUnit(island.seed, index * 6 + 3) * rules.models.length)] ?? rules.models[0]!,
       position,
-      scale: seededRange(island.seed, index * 5 + 3, 0.72, 1.28),
-      rotation: seededRange(island.seed, index * 5 + 4, 0, Math.PI * 2),
+      scale: seededRange(island.seed, index * 6 + 4, rules.scale[0], rules.scale[1]),
+      rotation: seededRange(island.seed, index * 6 + 5, 0, Math.PI * 2),
     });
   }
   return placements;
