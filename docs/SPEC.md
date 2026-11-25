@@ -276,7 +276,7 @@ the next poll. The server keeps the last good world on error and reports the err
 `AppConfig` (non-secret) is held by the server, editable from Settings, broadcast to every tab.
 Optional `isles.config.json` in the repo root seeds it (`watch`, `coverage`, `thresholds`, `rules`);
 `isles.config.example.json` documents it. `.env.example` documents environment variables.
-`maxRepos` (default 24) caps how many repositories are shown.
+`maxRepos` (default 24, at most 64) caps how many repositories are shown.
 
 ## Non-goals
 
