@@ -85,7 +85,7 @@ with your own defaults, copy `isles.config.example.json` to `isles.config.json`
 | `coverage` | Pipeline name → extra repositories it builds or ships. A pipeline normally only knows its own repo; list the others here and a failure will storm over all of them. |
 | `thresholds` | `staleDays`, `waitingHours`, `crowdSize`, `draftPileup`, `failStreakHot`, `releaseStaleDays`. |
 | `rules` | Turn any problem rule off. |
-| `pollSeconds`, `maxRepos`, `maxPrsPerRepo` | Polling and size limits. `maxRepos` defaults to 24; when the source has more, the Repos list says how many are not shown. |
+| `pollSeconds`, `maxRepos`, `maxPrsPerRepo` | Polling and size limits. `maxRepos` defaults to 24 and can be raised to 64; when the source has more than are shown, the Repos list says so. |
 
 ## Reading the world
 
@@ -113,7 +113,8 @@ The **Legend** panel shows the same, with live counts.
 ## Finding your way around
 
 - **Top bar**: repositories by health, pipelines by status, pull requests
-  waiting on someone, and the number of problems. Each opens the matching list.
+  waiting on someone, and the number of problems. Each opens the list behind it;
+  pull requests open Repos.
 - **Problems / Repos / Pipelines**: three lists in the left panel. Problems
   filter by severity. Repos are grouped by project, or sorted worst first.
   Pipelines list the most urgent first and filter by status. Type to search any
@@ -122,7 +123,8 @@ The **Legend** panel shows the same, with live counts.
   with their recent runs, pull requests, and a link to the real thing.
 - **Moving**: drag to pan, scroll or pinch to zoom, double-click to fly to
   something. Arrow keys pan, `+` and `-` zoom, `0` shows everything, `Esc`
-  clears the selection. The same controls sit in the bottom right corner.
+  clears the selection. Zoom, fit and a card listing these controls are also
+  buttons on screen.
 
 ## Run it for a team
 
@@ -165,9 +167,8 @@ how to add a data source or a new kind of problem.
 
 ## History
 
-This repository previously held *Living City*, an earlier prototype. It is
-preserved on the [`living-city`](../../tree/living-city) branch and the
-`living-city-final` tag.
+This repository previously held *Living City*, an earlier prototype that Repo
+Isles replaced.
 
 ## License
 
